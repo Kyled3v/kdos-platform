@@ -16,7 +16,7 @@ import { timingSafeEqual } from 'crypto';
 
 import type { IChecksumVerifier, VerifyChecksumOptions } from './IChecksumVerifier';
 import type { IFileHashProvider }                        from './FileHashProvider';
-import { NodeFileHashProvider }                          from './FileHashProvider';
+import { FileHashProvider }                          from './FileHashProvider';
 import {
   ChecksumResult,
   ChecksumVerificationError,
@@ -60,9 +60,9 @@ export class ChecksumVerifier implements IChecksumVerifier {
 
   /**
    * @param hashProvider - Injected hash implementation.
-   *                       Defaults to NodeFileHashProvider (production).
+   *                       Defaults to FileHashProvider (production).
    */
-  public constructor(hashProvider: IFileHashProvider = new NodeFileHashProvider()) {
+  public constructor(hashProvider: IFileHashProvider = new FileHashProvider()) {
     this.hashProvider = hashProvider;
   }
 
