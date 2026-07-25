@@ -2,6 +2,7 @@
   "name": "kdos",
   "version": "2.0.0",
   "description": "KDOS — KyleDev Operating System desktop shell",
+  "author": "KyleDev Software Systems Pty Ltd",
   "private": true,
   "main": "dist-electron/main.js",
   "type": "module",
