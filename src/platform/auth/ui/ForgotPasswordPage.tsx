@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { AuthCard } from "./AuthCard";
-import { EmailField, validateEmail } from "./EmailField";
+import { AuthLayout } from "../../../components/auth/AuthLayout";
+import { AuthCard } from "../../../components/auth/AuthCard";
+import { EmailField, validateEmail } from "../../../components/auth/EmailField";
 
 interface ForgotPasswordPageProps {
   readonly onSubmit: (email: string) => Promise<void>;
@@ -19,27 +19,30 @@ export function ForgotPasswordPage({
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | undefined>(undefined);
 
-  const handleSubmit = useCallback(async (e: { preventDefault(): void }): Promise<void> => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e: { preventDefault(): void }): Promise<void> => {
+      e.preventDefault();
 
-    const err = validateEmail(email);
-    setEmailError(err);
-    if (err !== undefined) return;
+      const err = validateEmail(email);
+      setEmailError(err);
+      if (err !== undefined) return;
 
-    setLoading(true);
-    setServerError(undefined);
+      setLoading(true);
+      setServerError(undefined);
 
-    try {
-      await onSubmit(email.trim());
-      setSubmitted(true);
-    } catch (error) {
-      setServerError(
-        error instanceof Error ? error.message : "An unexpected error occurred."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [email, onSubmit]);
+      try {
+        await onSubmit(email.trim());
+        setSubmitted(true);
+      } catch (error) {
+        setServerError(
+          error instanceof Error ? error.message : "An unexpected error occurred."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [email, onSubmit]
+  );
 
   return (
     <AuthLayout>
@@ -54,7 +57,14 @@ export function ForgotPasswordPage({
               className="flex flex-col items-center gap-4 py-4 text-center"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6 text-emerald-400" aria-hidden>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-6 w-6 text-emerald-400"
+                  aria-hidden
+                >
                   <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
@@ -62,8 +72,8 @@ export function ForgotPasswordPage({
                 <h2 className="text-lg font-semibold text-white">Check your email</h2>
                 <p className="mt-1 text-sm text-zinc-400">
                   If an account exists for{" "}
-                  <span className="text-zinc-200 font-medium">{email}</span>, you will receive
-                  reset instructions shortly.
+                  <span className="text-zinc-200 font-medium">{email}</span>, you will
+                  receive reset instructions shortly.
                 </p>
               </div>
               <button
@@ -111,7 +121,10 @@ export function ForgotPasswordPage({
 
               <EmailField
                 value={email}
-                onChange={(v) => { setEmail(v); setEmailError(validateEmail(v)); }}
+                onChange={(v: string) => {
+                  setEmail(v);
+                  setEmailError(validateEmail(v));
+                }}
                 error={emailError}
                 disabled={loading}
               />

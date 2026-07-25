@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AuthLayout } from "./AuthLayout";
-import { AuthCard } from "./AuthCard";
-import { EmailField, validateEmail } from "./EmailField";
-import { PasswordField } from "./PasswordField";
+import { AuthLayout } from "../../../components/auth/AuthLayout";
+import { AuthCard } from "../../../components/auth/AuthCard";
+import { EmailField, validateEmail } from "../../../components/auth/EmailField";
+import { PasswordField } from "../../../components/auth/PasswordField";
 import { validatePassword } from "../security/PasswordPolicy";
 import type { AuthService, RegisterRequest } from "../services/AuthService";
 import type { AuthSession } from "../models/AuthSession";
@@ -51,41 +51,54 @@ export function RegisterPage({
     return Object.keys(errors).length === 0;
   }, [firstName, lastName, email, password, confirmPassword]);
 
-  const handleSubmit = useCallback(async (e: { preventDefault(): void }): Promise<void> => {
-    e.preventDefault();
-    if (!validate()) return;
+  const handleSubmit = useCallback(
+    async (e: { preventDefault(): void }): Promise<void> => {
+      e.preventDefault();
+      if (!validate()) return;
 
-    setLoading(true);
-    setServerError(undefined);
+      setLoading(true);
+      setServerError(undefined);
 
-    const request: RegisterRequest = {
-      email: email.trim(),
+      const request: RegisterRequest = {
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role: defaultRole,
+        companyId: defaultCompanyId,
+      };
+
+      try {
+        const registerResult = await authService.register(request);
+
+        if (!registerResult.ok) {
+          setServerError(registerResult.reason);
+          return;
+        }
+
+        const loginResult = await authService.login({ email: email.trim(), password });
+
+        if (loginResult.ok) {
+          onSuccess(loginResult.value);
+        } else {
+          setServerError(loginResult.reason);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      authService,
+      email,
       password,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      role: defaultRole,
-      companyId: defaultCompanyId,
-    };
-
-    try {
-      const registerResult = await authService.register(request);
-
-      if (!registerResult.ok) {
-        setServerError(registerResult.reason);
-        return;
-      }
-
-      const loginResult = await authService.login({ email: email.trim(), password });
-
-      if (loginResult.ok) {
-        onSuccess(loginResult.value);
-      } else {
-        setServerError(loginResult.reason);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [authService, email, password, firstName, lastName, defaultRole, defaultCompanyId, validate, onSuccess]);
+      firstName,
+      lastName,
+      defaultRole,
+      defaultCompanyId,
+      validate,
+      onSuccess,
+    ]
+  );
 
   return (
     <AuthLayout>
@@ -135,9 +148,13 @@ export function RegisterPage({
                   "placeholder:text-zinc-500 transition-colors",
                   "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  fieldErrors["firstName"] !== undefined ? "border-red-500/70" : "border-white/10",
+                  fieldErrors["firstName"] !== undefined
+                    ? "border-red-500/70"
+                    : "border-white/10",
                 ].join(" ")}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e: { target: { value: string; checked: boolean } }) =>
+                  setFirstName(e.target.value)
+                }
               />
               {fieldErrors["firstName"] !== undefined && (
                 <p className="text-xs text-red-400">{fieldErrors["firstName"]}</p>
@@ -157,9 +174,13 @@ export function RegisterPage({
                   "placeholder:text-zinc-500 transition-colors",
                   "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
-                  fieldErrors["lastName"] !== undefined ? "border-red-500/70" : "border-white/10",
+                  fieldErrors["lastName"] !== undefined
+                    ? "border-red-500/70"
+                    : "border-white/10",
                 ].join(" ")}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e: { target: { value: string; checked: boolean } }) =>
+                  setLastName(e.target.value)
+                }
               />
               {fieldErrors["lastName"] !== undefined && (
                 <p className="text-xs text-red-400">{fieldErrors["lastName"]}</p>
@@ -169,14 +190,16 @@ export function RegisterPage({
 
           <EmailField
             value={email}
-            onChange={(v) => { setEmail(v); }}
+            onChange={(v: string) => {
+              setEmail(v);
+            }}
             error={fieldErrors["email"]}
             disabled={loading}
           />
 
           <PasswordField
             value={password}
-            onChange={(v) => setPassword(v)}
+            onChange={(v: string) => setPassword(v)}
             error={fieldErrors["password"]}
             disabled={loading}
             label="Password"
@@ -185,7 +208,7 @@ export function RegisterPage({
 
           <PasswordField
             value={confirmPassword}
-            onChange={(v) => setConfirmPassword(v)}
+            onChange={(v: string) => setConfirmPassword(v)}
             error={fieldErrors["confirmPassword"]}
             disabled={loading}
             label="Confirm password"
@@ -210,7 +233,10 @@ export function RegisterPage({
             Already have an account?{" "}
             <a
               href="#"
-              onClick={(e) => { e.preventDefault(); onLogin(); }}
+              onClick={(e: { preventDefault(): void }) => {
+                e.preventDefault();
+                onLogin();
+              }}
               className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
             >
               Sign in

@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EmailField, validateEmail } from "./EmailField";
-import { PasswordField } from "./PasswordField";
-import { RememberMe } from "./RememberMe";
+import { EmailField, validateEmail } from "../../../components/auth/EmailField";
+import { PasswordField } from "../../../components/auth/PasswordField";
+import { RememberMe } from "../../../components/auth/RememberMe";
 import type { AuthService } from "../services/AuthService";
 import type { AuthSession } from "../models/AuthSession";
 
@@ -35,28 +35,31 @@ export function LoginForm({
     return eErr === undefined && pErr === undefined;
   }, [email, password]);
 
-  const handleSubmit = useCallback(async (e: { preventDefault(): void }): Promise<void> => {
-    e.preventDefault();
-    if (!validate()) return;
+  const handleSubmit = useCallback(
+    async (e: { preventDefault(): void }): Promise<void> => {
+      e.preventDefault();
+      if (!validate()) return;
 
-    setLoading(true);
-    setServerError(undefined);
+      setLoading(true);
+      setServerError(undefined);
 
-    try {
-      const result = await authService.login({ email: email.trim(), password });
+      try {
+        const result = await authService.login({ email: email.trim(), password });
 
-      if (result.ok) {
-        if (rememberMe) {
-          localStorage.setItem("kdos_session", result.value.sessionId);
+        if (result.ok) {
+          if (rememberMe) {
+            localStorage.setItem("kdos_session", result.value.sessionId);
+          }
+          onSuccess(result.value);
+        } else {
+          setServerError(result.reason);
         }
-        onSuccess(result.value);
-      } else {
-        setServerError(result.reason);
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [authService, email, password, rememberMe, validate, onSuccess]);
+    },
+    [authService, email, password, rememberMe, validate, onSuccess]
+  );
 
   return (
     <motion.form
@@ -91,7 +94,10 @@ export function LoginForm({
 
       <EmailField
         value={email}
-        onChange={(v) => { setEmail(v); setEmailError(validateEmail(v)); }}
+        onChange={(v: string) => {
+          setEmail(v);
+          setEmailError(validateEmail(v));
+        }}
         error={emailError}
         disabled={loading}
       />
@@ -99,14 +105,20 @@ export function LoginForm({
       <div className="flex flex-col gap-1.5">
         <PasswordField
           value={password}
-          onChange={(v) => { setPassword(v); setPasswordError(v.length === 0 ? "Password is required." : undefined); }}
+          onChange={(v: string) => {
+            setPassword(v);
+            setPasswordError(v.length === 0 ? "Password is required." : undefined);
+          }}
           error={passwordError}
           disabled={loading}
         />
         <div className="flex justify-end">
           <a
             href="#"
-            onClick={(e) => { e.preventDefault(); onForgotPassword(); }}
+            onClick={(e: { preventDefault(): void }) => {
+              e.preventDefault();
+              onForgotPassword();
+            }}
             className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             Forgot password?
@@ -116,7 +128,7 @@ export function LoginForm({
 
       <RememberMe
         checked={rememberMe}
-        onChange={setRememberMe}
+        onChange={(checked: boolean) => setRememberMe(checked)}
         disabled={loading}
       />
 
@@ -149,7 +161,10 @@ export function LoginForm({
         Don&apos;t have an account?{" "}
         <a
           href="#"
-          onClick={(e) => { e.preventDefault(); onRegister(); }}
+          onClick={(e: { preventDefault(): void }) => {
+            e.preventDefault();
+            onRegister();
+          }}
           className="text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
         >
           Create one

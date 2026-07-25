@@ -1,5 +1,5 @@
-import { AuthLayout } from "./AuthLayout";
-import { AuthCard } from "./AuthCard";
+import { AuthLayout } from "../../../components/auth/AuthLayout";
+import { AuthCard } from "../../../components/auth/AuthCard";
 import { LoginForm } from "./LoginForm";
 import type { AuthService } from "../services/AuthService";
 import type { AuthSession } from "../models/AuthSession";
