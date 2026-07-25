@@ -1,0 +1,39 @@
+# electron-builder.yml
+#
+# NOTE: when this file is present, electron-builder uses it instead
+# of the "build" field in package.json - that field is ignored once
+# this file exists. appId, productName, and icon are included below
+# (matching the values already set in package.json) so this file is
+# a complete, working configuration on its own rather than depending
+# on a "build" field that will no longer be read.
+
+appId: com.kyledev.kdos
+productName: KDOS
+
+directories:
+  output: release
+  buildResources: build
+
+icon: build/icon.png
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+
+compression: maximum
+
+artifactName: "KDOS-${version}-Setup.${ext}"
+
+publish:
+  provider: generic
+  url: https://updates.example.com
