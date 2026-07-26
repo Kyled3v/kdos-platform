@@ -1,4 +1,4 @@
-import type { UpdateLogger } from "@/platform/update/UpdateLogger";
+import type { UpdateLogger } from "./UpdateLogger.js";
 
 /**
  * Callback invoked to run a single update check — ultimately wired to

@@ -1,23 +1,31 @@
-export type InstallationExecutionStatus =
-  | "Succeeded"
-  | "Failed";
+/**
+ * InstallationExecutionResult.ts
+ *
+ * Canonical installer execution result.
+ */
+
+export enum InstallationExecutionStatus {
+  Success = "Success",
+  Failed = "Failed",
+  Cancelled = "Cancelled"
+}
 
 export interface InstalledFileRecord {
-  readonly relativePath: string;
-  readonly sizeInBytes: number;
+  readonly source: string;
+  readonly destination: string;
+  readonly checksum: string;
 }
 
 export interface InstallationExecutionFailure {
   readonly code: string;
   readonly message: string;
-  readonly filePath: string | undefined;
+  readonly details?: string;
 }
 
 export interface InstallationExecutionResult {
   readonly status: InstallationExecutionStatus;
-  readonly targetVersion: string;
-  readonly installedFiles: ReadonlyArray<InstalledFileRecord>;
-  readonly failures: ReadonlyArray<InstallationExecutionFailure>;
-  readonly durationMs: number;
+  readonly startedAt: Date;
   readonly completedAt: Date;
+  readonly installedFiles: readonly InstalledFileRecord[];
+  readonly failure?: InstallationExecutionFailure;
 }
