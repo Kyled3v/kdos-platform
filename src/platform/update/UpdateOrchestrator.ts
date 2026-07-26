@@ -1,5 +1,5 @@
-import { UpdateEventType, type UpdateEventBus } from "@/platform/update/UpdateEvents";
-import type { UpdateLogger } from "@/platform/update/UpdateLogger";
+import { UpdateEventType, type UpdateEventBus } from "./UpdateEvents.js";
+import type { UpdateLogger } from "./UpdateLogger.js";
 
 /**
  * Every stage of the update pipeline, in execution order, mapping onto
