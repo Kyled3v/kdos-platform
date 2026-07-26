@@ -19,17 +19,16 @@
  *    `from "./menu.js"` is correct and matches what tsc actually
  *    emits into dist-electron/.
  */
-
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createApplicationMenu } from './menu.js'
+import { AutoUpdater } from '../src/platform/update/AutoUpdater.js'
+import { UpdateScheduler } from '../src/platform/update/UpdateScheduler.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-
 const isDev = !app.isPackaged
-
 let mainWindow: BrowserWindow | null = null
 
 function createMainWindow(): void {
@@ -84,6 +83,24 @@ app.whenReady().then(() => {
       createMainWindow()
     }
   })
+
+  // Wire the updater into startup. Failures are logged and never
+  // prevent KDOS from opening.
+  void (async () => {
+    try {
+      await autoUpdater.initialize()
+      await autoUpdater.checkForUpdates()
+    } catch (err) {
+      console.error('[AutoUpdater] Startup check failed:', err)
+    }
+
+    try {
+      updateScheduler.schedule({ intervalMs: 60 * 60 * 1000 })
+      updateScheduler.start()
+    } catch (err) {
+      console.error('[UpdateScheduler] Failed to start automatic update checks:', err)
+    }
+  })()
 })
 
 app.on('window-all-closed', () => {
@@ -91,3 +108,43 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+// ---------------------------------------------------------------------------
+// Updater composition root
+//
+// AutoUpdater and UpdateScheduler are constructed here, at the process
+// boundary, with a trigger that delegates to AutoUpdater.checkForUpdates().
+// All implementation details remain inside their respective classes.
+// ---------------------------------------------------------------------------
+
+const autoUpdater = new AutoUpdater(
+  // Concrete collaborators (UpdateDetector, PackageVerifier, PackageInstaller,
+  // PackageDownloadGateway, UpdateManagerNotifier) must be supplied here once
+  // they are available in the composition root. The placeholders below keep
+  // the compiler satisfied until that wiring is complete.
+  //
+  // TODO: replace these with the real instances when the composition root is
+  // established (e.g. from a factory or DI container).
+  undefined as any, // detector
+  undefined as any, // verifier
+  undefined as any, // installer
+  undefined as any, // downloadGateway
+  undefined as any, // updateManager
+  { currentApplicationVersion: app.getVersion() },
+  (snapshot) => {
+    console.log(`[AutoUpdater] ${snapshot.stage}: ${snapshot.statusMessage}`)
+  }
+)
+
+const updateScheduler = new UpdateScheduler(
+  async () => {
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (err) {
+      console.error('[AutoUpdater] Scheduled check failed:', err)
+    }
+  },
+  {
+    log: (message: string) => console.log(`[UpdateScheduler] ${message}`),
+  }
+)
