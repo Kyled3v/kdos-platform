@@ -23,15 +23,17 @@ export function bootstrapAuthentication(): void {
 
   container.registerSingleton(
     SESSION_MANAGER,
-    () => new JsonSessionManager()
+    () =>
+      new JsonSessionManager(
+        container.resolve(AUTH_STORAGE)
+      )
   );
 
   container.registerSingleton(
     AUTH_SERVICE,
     () =>
       new AuthService(
-        container.resolve(AUTH_STORAGE),
-        container.resolve(SESSION_MANAGER)
+        container.resolve(AUTH_STORAGE)
       )
   );
 }
