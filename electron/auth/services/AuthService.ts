@@ -10,7 +10,7 @@ import { randomUUID } from "crypto";
 import { AuthUser, UserId, UserRole, CompanyId, updateLastLogin } from "../models/AuthUser.js";
 import { AuthSession, SessionId, isExpired } from "../models/AuthSession.js";
 import { hashPassword, verifyPassword } from "../security/PasswordHasher.js";
-import { validatePassword, PasswordPolicyOptions, DEFAULT_PASSWORD_POLICY } from "../security/PasswordPolicy";
+import { validatePassword, PasswordPolicyOptions, DEFAULT_PASSWORD_POLICY } from "../security/PasswordPolicy.js";
 import { IAuthStorage } from "../storage/AuthStorage.js";
 
 // ---------------------------------------------------------------------------

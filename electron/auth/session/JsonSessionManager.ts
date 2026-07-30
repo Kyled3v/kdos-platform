@@ -1,48 +1,52 @@
-import { AuthSession } from "../models/AuthSession";
-import { SessionManager } from "./SessionManager";
+import type { Session, SessionManager } from "./SessionManager.js";
 
 export class JsonSessionManager implements SessionManager {
-  private currentSession: AuthSession | null = null;
+  private session: Session | null = null;
 
-  async createSession(session: AuthSession): Promise<void> {
-    this.currentSession = session;
-  }
-
-  async getCurrentSession(): Promise<AuthSession | null> {
-    return this.currentSession;
-  }
-
-  async invalidateSession(sessionId: string): Promise<void> {
-    if (
-      this.currentSession &&
-      this.currentSession.sessionId === sessionId
-    ) {
-      this.currentSession = null;
-    }
-  }
-
-  async invalidateAllSessions(userId: string): Promise<void> {
-    if (
-      this.currentSession &&
-      this.currentSession.userId === userId
-    ) {
-      this.currentSession = null;
-    }
-  }
-
-  async refreshSession(session: AuthSession): Promise<void> {
-    this.currentSession = session;
-  }
-
-  async validateSession(sessionId: string): Promise<boolean> {
-    if (!this.currentSession) {
-      return false;
+  public async load(): Promise<Session> {
+    if (this.session === null) {
+      throw new Error("No active session.");
     }
 
-    if (this.currentSession.sessionId !== sessionId) {
-      return false;
-    }
+    return this.session;
+  }
 
-    return this.currentSession.expiresAt > new Date();
+  public async save(session: Session): Promise<void> {
+    this.session = {
+      ...session,
+      state: "Loaded",
+    };
+  }
+
+  public async lock(session: Session): Promise<Session> {
+    const lockedSession: Session = {
+      ...session,
+      state: "Locked",
+      lastActivityAt: new Date(),
+    };
+
+    this.session = lockedSession;
+
+    return lockedSession;
+  }
+
+  public async unlock(session: Session): Promise<Session> {
+    const unlockedSession: Session = {
+      ...session,
+      state: "Unlocked",
+      lastActivityAt: new Date(),
+    };
+
+    this.session = unlockedSession;
+
+    return unlockedSession;
+  }
+
+  public async destroy(session: Session): Promise<void> {
+    this.session = {
+      ...session,
+      state: "Destroyed",
+      lastActivityAt: new Date(),
+    };
   }
 }

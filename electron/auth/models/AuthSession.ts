@@ -5,7 +5,7 @@
  * Expiry is evaluated at runtime via isExpired().
  */
 
-import { UserId } from "./AuthUser";
+import { UserId } from "./AuthUser.js";
 
 export type SessionId = string;
 
