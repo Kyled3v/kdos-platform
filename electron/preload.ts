@@ -1,11 +1,11 @@
-import { contextBridge, ipcRenderer } from "electron";
+﻿import { contextBridge, ipcRenderer } from "electron";
 
 const auth = {
-  login: (request: unknown) =>
-    ipcRenderer.invoke("auth.login", request),
-
   register: (request: unknown) =>
     ipcRenderer.invoke("auth.register", request),
+
+  login: (request: unknown) =>
+    ipcRenderer.invoke("auth.login", request),
 
   logout: (sessionId: string) =>
     ipcRenderer.invoke("auth.logout", sessionId),
@@ -20,4 +20,7 @@ const kdos = {
   auth,
 };
 
-contextBridge.exposeInMainWorld("kdos", kdos);
+contextBridge.exposeInMainWorld(
+  "kdos",
+  kdos
+);

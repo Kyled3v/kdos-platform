@@ -1,4 +1,4 @@
-{
+﻿{
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
@@ -16,5 +16,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "electron"]
   },
-  "include": ["."]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "../dist", "../dist-electron"]
 }

@@ -1,101 +1,82 @@
-{
-  "name": "kdos",
-  "version": "2.0.1",
-  "description": "KDOS — KyleDev Operating System desktop shell",
-  "author": "KyleDev Software Systems Pty Ltd",
-  "private": true,
-  "main": "dist-electron/main.js",
-  "type": "module",
-
-  "scripts": {
-    "dev": "vite",
-
-    "build": "tsc -b && vite build && tsc -p electron/tsconfig.json",
-
-    "typecheck": "tsc -b --noEmit",
-
-    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-
-    "preview": "vite preview",
-
-    "electron:dev": "concurrently -k \"npm:dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-
-    "electron:start": "cross-env NODE_ENV=production npm run build && electron .",
-
-    "electron:build": "npm run build && electron-builder",
-
-    "dist": "npm run electron:build",
-
-    "release": "npm run typecheck && npm run electron:build"
-  },
-
-  "dependencies": {
-    "framer-motion": "^11.11.17",
-    "lucide-react": "^0.454.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "zustand": "^5.0.1"
-  },
-
-  "devDependencies": {
-    "@types/node": "^22.9.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@typescript-eslint/eslint-plugin": "^8.14.0",
-    "@typescript-eslint/parser": "^8.14.0",
-    "@vitejs/plugin-react": "^4.3.3",
-    "autoprefixer": "^10.4.20",
-    "concurrently": "^10.0.3",
-    "cross-env": "^10.1.0",
-    "electron": "^33.2.0",
-    "electron-builder": "^26.15.3",
-    "eslint": "^8.57.1",
-    "eslint-plugin-react-hooks": "^4.6.2",
-    "eslint-plugin-react-refresh": "^0.4.14",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.14",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.21",
-    "wait-on": "^9.0.10"
-  },
-
-  "build": {
-    "appId": "com.kyledev.kdos",
-    "productName": "KDOS",
-
-    "directories": {
-      "output": "release"
-    },
-
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "package.json"
-    ],
-
-    "icon": "build/icon.png",
-
-    "asar": true,
-
-    "win": {
-      "icon": "build/icon.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false
-    }
-  }
+﻿{
+    "name":  "kdos",
+    "version":  "2.0.1",
+    "description":  "KDOS â€” KyleDev Operating System desktop shell",
+    "author":  "KyleDev Software Systems Pty Ltd",
+    "private":  true,
+    "main":  "dist-electron/main.js",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "tsc -b \u0026\u0026 vite build \u0026\u0026 tsc -p electron/tsconfig.json",
+                    "typecheck":  "tsc -b --noEmit",
+                    "lint":  "eslint . --ext .ts,.tsx --max-warnings 0",
+                    "preview":  "vite preview",
+                    "electron:dev":  "concurrently -k \"npm:dev\" \"wait-on http://localhost:5173 \u0026\u0026 cross-env NODE_ENV=development electron .\"",
+                    "electron:start":  "cross-env NODE_ENV=production npm run build \u0026\u0026 electron .",
+                    "electron:build":  "npm run build \u0026\u0026 electron-builder",
+                    "dist":  "npm run electron:build",
+                    "release":  "npm run typecheck \u0026\u0026 npm run electron:build"
+                },
+    "dependencies":  {
+                         "framer-motion":  "^11.11.17",
+                         "lucide-react":  "^0.454.0",
+                         "react":  "^18.3.1",
+                         "react-dom":  "^18.3.1",
+                         "react-router-dom":  "^6.28.0",
+                         "zustand":  "^5.0.1"
+                     },
+    "devDependencies":  {
+                            "@types/node":  "^22.9.0",
+                            "@types/react":  "^18.3.12",
+                            "@types/react-dom":  "^18.3.1",
+                            "@typescript-eslint/eslint-plugin":  "^8.14.0",
+                            "@typescript-eslint/parser":  "^8.14.0",
+                            "@vitejs/plugin-react":  "^4.3.3",
+                            "autoprefixer":  "^10.4.20",
+                            "concurrently":  "^10.0.3",
+                            "cross-env":  "^10.1.0",
+                            "electron":  "^33.2.0",
+                            "electron-builder":  "^26.15.3",
+                            "eslint":  "^8.57.1",
+                            "eslint-plugin-react-hooks":  "^4.6.2",
+                            "eslint-plugin-react-refresh":  "^0.4.14",
+                            "postcss":  "^8.4.49",
+                            "tailwindcss":  "^3.4.14",
+                            "typescript":  "^5.6.3",
+                            "vite":  "^5.4.21",
+                            "wait-on":  "^9.0.10"
+                        },
+    "build":  {
+                  "appId":  "com.kyledev.kdos",
+                  "productName":  "KDOS",
+                  "directories":  {
+                                      "output":  "release"
+                                  },
+                  "files":  [
+                                "dist/**/*",
+                                "dist-electron/**/*",
+                                "package.json"
+                            ],
+                  "icon":  "build/icon.png",
+                  "asar":  true,
+                  "win":  {
+                              "icon":  "build/icon.ico",
+                              "target":  [
+                                             {
+                                                 "target":  "nsis",
+                                                 "arch":  [
+                                                              "x64"
+                                                          ]
+                                             }
+                                         ]
+                          },
+                  "nsis":  {
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "createDesktopShortcut":  true,
+                               "createStartMenuShortcut":  true,
+                               "deleteAppDataOnUninstall":  false
+                           }
+              }
 }

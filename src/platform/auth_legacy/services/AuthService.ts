@@ -1,9 +1,13 @@
-import type {
+﻿import type {
   AuthUser,
   CompanyId,
   UserRole,
 } from "../models/AuthUser";
-import type { AuthSession, SessionId } from "../models/AuthSession";
+
+import type {
+  AuthSession,
+  SessionId,
+} from "../models/AuthSession";
 
 export interface RegisterRequest {
   readonly email: string;
@@ -29,7 +33,9 @@ export type AuthFailure = {
   readonly reason: string;
 };
 
-export type AuthResult<T> = AuthSuccess<T> | AuthFailure;
+export type AuthResult<T> =
+  | AuthSuccess<T>
+  | AuthFailure;
 
 interface AuthUserResponse {
   readonly userId: string;
@@ -51,6 +57,22 @@ interface AuthSessionResponse {
   readonly refreshToken: string;
 }
 
+function getKdosBridge() {
+  if (!window.kdos) {
+    throw new Error(
+      "KDOS authentication bridge is unavailable. Start the application through Electron.",
+    );
+  }
+
+  if (!window.kdos.auth) {
+    throw new Error(
+      "KDOS authentication API is unavailable.",
+    );
+  }
+
+  return window.kdos;
+}
+
 function mapUser(user: AuthUserResponse): AuthUser {
   return {
     userId: user.userId,
@@ -63,11 +85,15 @@ function mapUser(user: AuthUserResponse): AuthUser {
     createdAt: new Date(user.createdAt),
     updatedAt: new Date(user.updatedAt),
     lastLogin:
-      user.lastLogin === null ? undefined : new Date(user.lastLogin),
+      user.lastLogin === null
+        ? undefined
+        : new Date(user.lastLogin),
   };
 }
 
-function mapSession(session: AuthSessionResponse): AuthSession {
+function mapSession(
+  session: AuthSessionResponse,
+): AuthSession {
   return {
     sessionId: session.sessionId as SessionId,
     userId: session.userId,
@@ -79,53 +105,104 @@ function mapSession(session: AuthSessionResponse): AuthSession {
 
 export class AuthService {
   public async register(
-    request: RegisterRequest
+    request: RegisterRequest,
   ): Promise<AuthResult<AuthUser>> {
-    const result = await window.kdos.auth.register(request);
+    try {
+      console.log("[KDOS] Renderer register:", request.email);
 
-    if (!result.ok) {
-      return result;
+      const result =
+        await getKdosBridge().auth.register(request);
+
+      console.log("[KDOS] Renderer register result:", result);
+
+      if (!result.ok) {
+        return result;
+      }
+
+      return {
+        ok: true,
+        value: mapUser(result.value),
+      };
+    } catch (error) {
+      console.error("[KDOS] Renderer register failed:", error);
+
+      return {
+        ok: false,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Registration failed.",
+      };
     }
-
-    return {
-      ok: true,
-      value: mapUser(result.value),
-    };
   }
 
   public async login(
-    request: LoginRequest
+    request: LoginRequest,
   ): Promise<AuthResult<AuthSession>> {
-    const result = await window.kdos.auth.login(request);
+    try {
+      const result =
+        await getKdosBridge().auth.login(request);
 
-    if (!result.ok) {
-      return result;
+      if (!result.ok) {
+        return result;
+      }
+
+      return {
+        ok: true,
+        value: mapSession(result.value),
+      };
+    } catch (error) {
+      console.error("[KDOS] Renderer login failed:", error);
+
+      return {
+        ok: false,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Login failed.",
+      };
     }
-
-    return {
-      ok: true,
-      value: mapSession(result.value),
-    };
   }
 
-  public async logout(sessionId: string): Promise<void> {
-    await window.kdos.auth.logout(sessionId);
+  public async logout(
+    sessionId: string,
+  ): Promise<void> {
+    await getKdosBridge().auth.logout(sessionId);
   }
 
   public async validateSession(
-    sessionId: string
+    sessionId: string,
   ): Promise<AuthResult<AuthSession>> {
-    const result = await window.kdos.auth.validateSession(sessionId);
+    try {
+      const result =
+        await getKdosBridge().auth.validateSession(sessionId);
 
-    if (!result.ok) {
-      return result;
+      if (!result.ok) {
+        return result;
+      }
+
+      return {
+        ok: true,
+        value: mapSession(result.value),
+      };
+    } catch (error) {
+      console.error(
+        "[KDOS] Renderer session validation failed:",
+        error,
+      );
+
+      return {
+        ok: false,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Session validation failed.",
+      };
     }
-
-    return {
-      ok: true,
-      value: mapSession(result.value),
-    };
   }
 }
 
-export { AuthService as RendererAuthService };
+export {
+  AuthService as RendererAuthService,
+};
+

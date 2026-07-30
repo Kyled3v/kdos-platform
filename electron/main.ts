@@ -1,4 +1,4 @@
-/**
+﻿/**
  * electron/main.ts
  */
 
@@ -57,8 +57,18 @@ function createMainWindow(): void {
 }
 
 app.whenReady().then(() => {
-  bootstrapAuthentication();
-  registerAuthIPC();
+  try {
+    console.log("[KDOS] Bootstrapping authentication...");
+    bootstrapAuthentication();
+    console.log("[KDOS] Authentication bootstrapped.");
+
+    registerAuthIPC();
+    console.log("[KDOS] Authentication IPC registered.");
+  } catch (error) {
+    console.error("[KDOS] Authentication bootstrap failed:", error);
+    app.quit();
+    return;
+  }
 
   createApplicationMenu();
   createMainWindow();
@@ -75,3 +85,4 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
