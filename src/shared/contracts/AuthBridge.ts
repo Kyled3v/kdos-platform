@@ -1,23 +1,12 @@
 /**
  * KDOS Authentication Bridge
  *
- * Renderer-facing authentication contract.
- *
- * The renderer communicates with Electron exclusively
- * through window.kdos.auth.
+ * Typed contract between the React renderer and Electron preload.
  */
 
 export interface LoginRequest {
   readonly email: string;
   readonly password: string;
-}
-
-export interface LoginResponse {
-  readonly ok: boolean;
-  readonly sessionId?: string;
-  readonly userId?: string;
-  readonly message?: string;
-  readonly reason?: string;
 }
 
 export interface RegisterRequest {
@@ -29,26 +18,58 @@ export interface RegisterRequest {
   readonly companyId: string;
 }
 
+export interface AuthSessionResponse {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly refreshToken: string;
+}
+
+export interface AuthUserResponse {
+  readonly userId: string;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
+  readonly companyId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly lastLogin: string | null;
+}
+
+export type AuthSuccess<T> = {
+  readonly ok: true;
+  readonly value: T;
+};
+
+export type AuthFailure = {
+  readonly ok: false;
+  readonly reason: string;
+};
+
+export type AuthResult<T> = AuthSuccess<T> | AuthFailure;
+
 export interface AuthBridge {
-  login(request: LoginRequest): Promise<LoginResponse>;
+  readonly login: (
+    request: LoginRequest
+  ) => Promise<AuthResult<AuthSessionResponse>>;
 
-  logout(sessionId: string): Promise<void>;
+  readonly register: (
+    request: RegisterRequest
+  ) => Promise<AuthResult<AuthUserResponse>>;
 
-  validateSession(
+  readonly logout: (
     sessionId: string
-  ): Promise<{
-    ok: boolean;
-    sessionId?: string;
-    userId?: string;
-    message?: string;
-  }>;
+  ) => Promise<void>;
 
-  register(request: RegisterRequest): Promise<{
-    ok: boolean;
-    userId?: string;
-    message?: string;
-    reason?: string;
-  }>;
+  readonly validateSession: (
+    sessionId: string
+  ) => Promise<AuthResult<AuthSessionResponse>>;
+}
 
-  currentUser(sessionId: string): Promise<string | null>;
+export interface KdosBridge {
+  readonly version: string;
+  readonly platform: NodeJS.Platform;
+  readonly auth: AuthBridge;
 }

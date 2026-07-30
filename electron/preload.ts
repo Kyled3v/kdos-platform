@@ -1,54 +1,23 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-export interface KdosBridge {
-  readonly version: string;
-  readonly platform: NodeJS.Platform;
+const auth = {
+  login: (request: unknown) =>
+    ipcRenderer.invoke("auth.login", request),
 
-  readonly auth: {
-    login(request: {
-      username: string;
-      password: string;
-    }): Promise<{
-      success: boolean;
-      sessionId?: string;
-      userId?: string;
-      message?: string;
-    }>;
+  register: (request: unknown) =>
+    ipcRenderer.invoke("auth.register", request),
 
-    logout(): Promise<void>;
+  logout: (sessionId: string) =>
+    ipcRenderer.invoke("auth.logout", sessionId),
 
-    validateSession(): Promise<boolean>;
-
-    register(request: {
-      username: string;
-      password: string;
-      displayName: string;
-    }): Promise<boolean>;
-
-    currentUser(): Promise<string | null>;
-  };
-}
-
-const kdosBridge: KdosBridge = {
-  version: process.versions.electron,
-  platform: process.platform,
-
-  auth: {
-    login: (request) =>
-      ipcRenderer.invoke("auth.login", request),
-
-    logout: () =>
-      ipcRenderer.invoke("auth.logout"),
-
-    validateSession: () =>
-      ipcRenderer.invoke("auth.validateSession"),
-
-    register: (request) =>
-      ipcRenderer.invoke("auth.register", request),
-
-    currentUser: () =>
-      ipcRenderer.invoke("auth.currentUser"),
-  },
+  validateSession: (sessionId: string) =>
+    ipcRenderer.invoke("auth.session", sessionId),
 };
 
-contextBridge.exposeInMainWorld("kdos", kdosBridge);
+const kdos = {
+  version: process.versions.electron,
+  platform: process.platform,
+  auth,
+};
+
+contextBridge.exposeInMainWorld("kdos", kdos);

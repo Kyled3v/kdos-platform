@@ -1,5 +1,9 @@
-﻿import type { AuthSession } from "../models/AuthSession";
-import type { AuthUser, CompanyId, UserId, UserRole } from "../models/AuthUser";
+import type {
+  AuthUser,
+  CompanyId,
+  UserRole,
+} from "../models/AuthUser";
+import type { AuthSession, SessionId } from "../models/AuthSession";
 
 export interface RegisterRequest {
   readonly email: string;
@@ -27,48 +31,101 @@ export type AuthFailure = {
 
 export type AuthResult<T> = AuthSuccess<T> | AuthFailure;
 
-export interface AuthService {
-  register(request: RegisterRequest): Promise<AuthResult<AuthUser>>;
-  login(request: LoginRequest): Promise<AuthResult<AuthSession>>;
-  logout(sessionId: string): Promise<void>;
-  validateSession(sessionId: string): Promise<AuthResult<AuthSession>>;
+interface AuthUserResponse {
+  readonly userId: string;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly role: UserRole;
+  readonly companyId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly lastLogin: string | null;
 }
 
-declare global {
-  interface Window {
-    kdos: {
-      auth: {
-        register(request: RegisterRequest): Promise<AuthResult<AuthUser>>;
-        login(request: LoginRequest): Promise<AuthResult<AuthSession>>;
-        logout(sessionId: string): Promise<void>;
-        validateSession(sessionId: string): Promise<AuthResult<AuthSession>>;
-      };
-      version: string;
-      platform: NodeJS.Platform;
+interface AuthSessionResponse {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly refreshToken: string;
+}
+
+function mapUser(user: AuthUserResponse): AuthUser {
+  return {
+    userId: user.userId,
+    email: user.email,
+    passwordHash: "",
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    companyId: user.companyId,
+    createdAt: new Date(user.createdAt),
+    updatedAt: new Date(user.updatedAt),
+    lastLogin:
+      user.lastLogin === null ? undefined : new Date(user.lastLogin),
+  };
+}
+
+function mapSession(session: AuthSessionResponse): AuthSession {
+  return {
+    sessionId: session.sessionId as SessionId,
+    userId: session.userId,
+    createdAt: new Date(session.createdAt),
+    expiresAt: new Date(session.expiresAt),
+    refreshToken: session.refreshToken,
+  };
+}
+
+export class AuthService {
+  public async register(
+    request: RegisterRequest
+  ): Promise<AuthResult<AuthUser>> {
+    const result = await window.kdos.auth.register(request);
+
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: mapUser(result.value),
+    };
+  }
+
+  public async login(
+    request: LoginRequest
+  ): Promise<AuthResult<AuthSession>> {
+    const result = await window.kdos.auth.login(request);
+
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: mapSession(result.value),
+    };
+  }
+
+  public async logout(sessionId: string): Promise<void> {
+    await window.kdos.auth.logout(sessionId);
+  }
+
+  public async validateSession(
+    sessionId: string
+  ): Promise<AuthResult<AuthSession>> {
+    const result = await window.kdos.auth.validateSession(sessionId);
+
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: mapSession(result.value),
     };
   }
 }
 
-export class RendererAuthService implements AuthService {
-  public register(
-    request: RegisterRequest
-  ): Promise<AuthResult<AuthUser>> {
-    return window.kdos.auth.register(request);
-  }
-
-  public login(
-    request: LoginRequest
-  ): Promise<AuthResult<AuthSession>> {
-    return window.kdos.auth.login(request);
-  }
-
-  public logout(sessionId: string): Promise<void> {
-    return window.kdos.auth.logout(sessionId);
-  }
-
-  public validateSession(
-    sessionId: string
-  ): Promise<AuthResult<AuthSession>> {
-    return window.kdos.auth.validateSession(sessionId);
-  }
-}
+export { AuthService as RendererAuthService };

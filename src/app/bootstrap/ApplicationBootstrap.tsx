@@ -1,19 +1,17 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 
 import { useBootstrap } from "@/app/bootstrap/hooks/useBootstrap";
 import { BootstrapStatus } from "@/app/bootstrap/types/BootstrapStatus";
 
 import { LoginPage } from "@/platform/auth_legacy/ui/LoginPage";
-import { JsonAuthStorage } from "@/platform/auth_legacy/storage/AuthStorage";
-import { AuthService } from "@/platform/auth_legacy/services/AuthService";
+import { RendererAuthService } from "@/platform/auth_legacy/services/AuthService";
 import type { AuthSession } from "@/platform/auth_legacy/models/AuthSession";
 
 export function ApplicationBootstrap(): JSX.Element {
   const state = useBootstrap();
 
   const authService = useMemo(() => {
-    const storage = new JsonAuthStorage("./storage");
-    return new AuthService(storage);
+    return new RendererAuthService();
   }, []);
 
   switch (state.status) {
@@ -48,4 +46,6 @@ export function ApplicationBootstrap(): JSX.Element {
       return <div>Loading...</div>;
   }
 }
+
+
 
