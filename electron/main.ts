@@ -58,7 +58,7 @@ function createMainWindow(): void {
 
 app.whenReady().then(() => {
   bootstrapAuthentication();
-registerAuthIPC();
+  registerAuthIPC();
 
   createApplicationMenu();
   createMainWindow();

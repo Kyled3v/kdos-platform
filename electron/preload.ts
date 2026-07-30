@@ -1,21 +1,54 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
-/**
- * KDOS preload bridge.
- *
- * Exposes a minimal, read-only surface to the renderer under
- * `window.kdos`. No IPC channels are wired yet — only static process
- * information is exposed.
- */
 export interface KdosBridge {
   readonly version: string;
   readonly platform: NodeJS.Platform;
+
+  readonly auth: {
+    login(request: {
+      username: string;
+      password: string;
+    }): Promise<{
+      success: boolean;
+      sessionId?: string;
+      userId?: string;
+      message?: string;
+    }>;
+
+    logout(): Promise<void>;
+
+    validateSession(): Promise<boolean>;
+
+    register(request: {
+      username: string;
+      password: string;
+      displayName: string;
+    }): Promise<boolean>;
+
+    currentUser(): Promise<string | null>;
+  };
 }
 
 const kdosBridge: KdosBridge = {
   version: process.versions.electron,
   platform: process.platform,
+
+  auth: {
+    login: (request) =>
+      ipcRenderer.invoke("auth.login", request),
+
+    logout: () =>
+      ipcRenderer.invoke("auth.logout"),
+
+    validateSession: () =>
+      ipcRenderer.invoke("auth.validateSession"),
+
+    register: (request) =>
+      ipcRenderer.invoke("auth.register", request),
+
+    currentUser: () =>
+      ipcRenderer.invoke("auth.currentUser"),
+  },
 };
 
 contextBridge.exposeInMainWorld("kdos", kdosBridge);
-

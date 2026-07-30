@@ -1,38 +1,54 @@
 /**
  * KDOS Authentication Bridge
  *
- * This contract defines every authentication function
- * available to the React renderer.
+ * Renderer-facing authentication contract.
  *
- * The renderer MUST NEVER talk directly to Electron.
+ * The renderer communicates with Electron exclusively
+ * through window.kdos.auth.
  */
 
 export interface LoginRequest {
-  username: string;
-  password: string;
+  readonly email: string;
+  readonly password: string;
 }
 
 export interface LoginResponse {
-  success: boolean;
-  sessionId?: string;
-  userId?: string;
-  message?: string;
+  readonly ok: boolean;
+  readonly sessionId?: string;
+  readonly userId?: string;
+  readonly message?: string;
+  readonly reason?: string;
 }
 
 export interface RegisterRequest {
-  username: string;
-  password: string;
-  displayName: string;
+  readonly email: string;
+  readonly password: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
+  readonly companyId: string;
 }
 
 export interface AuthBridge {
   login(request: LoginRequest): Promise<LoginResponse>;
 
-  logout(): Promise<void>;
+  logout(sessionId: string): Promise<void>;
 
-  validateSession(): Promise<boolean>;
+  validateSession(
+    sessionId: string
+  ): Promise<{
+    ok: boolean;
+    sessionId?: string;
+    userId?: string;
+    message?: string;
+  }>;
 
-  register(request: RegisterRequest): Promise<boolean>;
+  register(request: RegisterRequest): Promise<{
+    ok: boolean;
+    userId?: string;
+    message?: string;
+    reason?: string;
+  }>;
 
-  currentUser(): Promise<string | null>;
+  currentUser(sessionId: string): Promise<string | null>;
 }

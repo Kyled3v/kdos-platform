@@ -15,9 +15,21 @@ export function registerAuthIPC(): void {
     return authService.logout();
   });
 
-  ipcMain.handle("auth.session", async () => {
+  ipcMain.handle("auth.validateSession", async () => {
     const authService = container.resolve<any>(AUTH_SERVICE);
 
     return authService.restoreSession();
+  });
+
+  ipcMain.handle("auth.register", async (_, request) => {
+    const authService = container.resolve<any>(AUTH_SERVICE);
+
+    return authService.register(request);
+  });
+
+  ipcMain.handle("auth.currentUser", async () => {
+    const authService = container.resolve<any>(AUTH_SERVICE);
+
+    return authService.currentUser();
   });
 }
