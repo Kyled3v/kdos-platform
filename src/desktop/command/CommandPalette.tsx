@@ -1,3 +1,3 @@
-export function CommandPalette(): JSX.Element {
+export function CommandPalette(): JSX.Element | null {
   return null;
 }
