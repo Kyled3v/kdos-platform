@@ -9,8 +9,8 @@
 
 import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
 import { join } from "path";
-import { AuthUser, UserId } from "../models/AuthUser";
-import { AuthSession, SessionId } from "../models/AuthSession";
+import { AuthUser, UserId } from "../models/AuthUser.js";
+import { AuthSession, SessionId } from "../models/AuthSession.js";
 
 // ---------------------------------------------------------------------------
 // Contract

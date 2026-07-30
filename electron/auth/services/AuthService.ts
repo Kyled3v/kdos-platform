@@ -7,11 +7,11 @@
  */
 
 import { randomUUID } from "crypto";
-import { AuthUser, UserId, UserRole, CompanyId, updateLastLogin } from "../models/AuthUser";
-import { AuthSession, SessionId, isExpired } from "../models/AuthSession";
-import { hashPassword, verifyPassword } from "../security/PasswordHasher";
+import { AuthUser, UserId, UserRole, CompanyId, updateLastLogin } from "../models/AuthUser.js";
+import { AuthSession, SessionId, isExpired } from "../models/AuthSession.js";
+import { hashPassword, verifyPassword } from "../security/PasswordHasher.js";
 import { validatePassword, PasswordPolicyOptions, DEFAULT_PASSWORD_POLICY } from "../security/PasswordPolicy";
-import { IAuthStorage } from "../storage/AuthStorage";
+import { IAuthStorage } from "../storage/AuthStorage.js";
 
 // ---------------------------------------------------------------------------
 // Request / result types
@@ -166,3 +166,4 @@ export class AuthService {
     return succeed(session);
   }
 }
+

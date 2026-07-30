@@ -1,26 +1,19 @@
-import { useMemo } from "react";
 
 import { useBootstrap } from "@/app/bootstrap/hooks/useBootstrap";
 import { BootstrapStatus } from "@/app/bootstrap/types/BootstrapStatus";
 
-import { LoginPage } from "@/platform/auth/ui/LoginPage";
-import { JsonAuthStorage } from "@/platform/auth/storage/AuthStorage";
-import { AuthService } from "@/platform/auth/services/AuthService";
+import { LoginPage } from "@/platform/auth_legacy/ui/LoginPage";
+import type { AuthSession } from "@/platform/auth_legacy/models/AuthSession";
 
 export function ApplicationBootstrap(): JSX.Element {
   const state = useBootstrap();
 
-  const authService = useMemo(() => {
-    const storage = new JsonAuthStorage("./storage");
-    return new AuthService(storage);
-  }, []);
 
   switch (state.status) {
     case BootstrapStatus.UNAUTHENTICATED:
       return (
         <LoginPage
-          authService={authService}
-          onSuccess={(session) => {
+          onSuccess={(session: AuthSession) => {
             console.log("Logged in:", session);
           }}
           onForgotPassword={() => {
