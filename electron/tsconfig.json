@@ -16,6 +16,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "electron"]
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "preload.cts"],
   "exclude": ["node_modules", "../dist", "../dist-electron"]
 }

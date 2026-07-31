@@ -1,0 +1,12 @@
+{
+  "userId": "b01d2c46-5ec7-4690-a2e3-b93f68d5b183",
+  "email": "kyledev.test@example.com",
+  "passwordHash": "210000:03fb3664766646e404ff295be7b8cba3b5634a8b2036e877b5dc1a5886a4d6a5:1f9f1380d9a00c9e327584a413660ef395be83a5099eae0b0156d7b6256c4dbe9c20c3b711fde16b5e0e408c0468289ebb2867294d25deabe288cc1cf378d32b",
+  "firstName": "Kyle",
+  "lastName": "Developer",
+  "role": "Admin",
+  "companyId": "kyledev",
+  "createdAt": "2026-07-31T00:32:12.003Z",
+  "updatedAt": "2026-07-31T00:34:13.497Z",
+  "lastLogin": "2026-07-31T00:34:13.497Z"
+}

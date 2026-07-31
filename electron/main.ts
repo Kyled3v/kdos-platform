@@ -28,10 +28,10 @@ function createMainWindow(): void {
     backgroundColor: "#0A0A0B",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.resolve(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
     },
   });
 
@@ -39,6 +39,18 @@ function createMainWindow(): void {
     mainWindow?.show();
   });
 
+  mainWindow.webContents.on(
+    "preload-error",
+    (_event, preloadPath, error) => {
+      console.error("[KDOS] PRELOAD ERROR:", preloadPath, error);
+    },
+  );
+  mainWindow.webContents.on(
+    "preload-error",
+    (_event, preloadPath, error) => {
+      console.error("[KDOS] PRELOAD ERROR:", preloadPath, error);
+    },
+  );
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
@@ -85,4 +97,11 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+
+
+
+
+
+
 
