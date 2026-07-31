@@ -3,12 +3,12 @@
 import { useBootstrap } from "@/app/bootstrap/hooks/useBootstrap";
 import { BootstrapStatus } from "@/app/bootstrap/types/BootstrapStatus";
 
-import { LoginPage } from "@/platform/auth_legacy/ui/LoginPage";
-import { RegisterPage } from "@/platform/auth_legacy/ui/RegisterPage";
-import { RendererAuthService } from "@/platform/auth_legacy/services/AuthService";
+import { LoginPage } from "@/platform/auth/ui/LoginPage";
+import { RegisterPage } from "@/platform/auth/ui/RegisterPage";
+import { RendererAuthService } from "@/platform/auth/services/AuthService";
 
-import type { AuthSession } from "@/platform/auth_legacy/models/AuthSession";
-import type { CompanyId } from "@/platform/auth_legacy/models/AuthUser";
+import type { AuthSession } from "@/platform/auth/models/AuthSession";
+import type { CompanyId } from "@/platform/auth/models/AuthUser";
 
 type AuthScreen = "login" | "register";
 
@@ -106,3 +106,4 @@ export function ApplicationBootstrap(): JSX.Element {
       );
   }
 }
+
