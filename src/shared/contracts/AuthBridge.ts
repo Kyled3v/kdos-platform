@@ -1,7 +1,7 @@
-/**
+﻿/**
  * KDOS Authentication Bridge
  *
- * Typed contract between the React renderer and Electron preload.
+ * Typed contract between React renderer and Electron preload.
  */
 
 export interface LoginRequest {
@@ -14,8 +14,17 @@ export interface RegisterRequest {
   readonly password: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
+  readonly role:
+    | "Admin"
+    | "Manager"
+    | "Operator"
+    | "Viewer";
   readonly companyId: string;
+}
+
+export interface VerifyEmailRequest {
+  readonly email: string;
+  readonly code: string;
 }
 
 export interface AuthSessionResponse {
@@ -31,7 +40,11 @@ export interface AuthUserResponse {
   readonly email: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
+  readonly role:
+    | "Admin"
+    | "Manager"
+    | "Operator"
+    | "Viewer";
   readonly companyId: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -48,24 +61,44 @@ export type AuthFailure = {
   readonly reason: string;
 };
 
-export type AuthResult<T> = AuthSuccess<T> | AuthFailure;
+export type AuthResult<T> =
+  | AuthSuccess<T>
+  | AuthFailure;
 
 export interface AuthBridge {
   readonly login: (
-    request: LoginRequest
-  ) => Promise<AuthResult<AuthSessionResponse>>;
+    request: LoginRequest,
+  ) => Promise<
+    AuthResult<AuthSessionResponse>
+  >;
 
   readonly register: (
-    request: RegisterRequest
-  ) => Promise<AuthResult<AuthUserResponse>>;
+    request: RegisterRequest,
+  ) => Promise<
+    AuthResult<AuthUserResponse>
+  >;
+
+  readonly verifyEmail: (
+    request: VerifyEmailRequest,
+  ) => Promise<
+    AuthResult<AuthUserResponse>
+  >;
+
+  readonly resendVerification: (
+    email: string,
+  ) => Promise<
+    AuthResult<boolean>
+  >;
 
   readonly logout: (
-    sessionId: string
+    sessionId: string,
   ) => Promise<void>;
 
   readonly validateSession: (
-    sessionId: string
-  ) => Promise<AuthResult<AuthSessionResponse>>;
+    sessionId: string,
+  ) => Promise<
+    AuthResult<AuthSessionResponse>
+  >;
 }
 
 export interface KdosBridge {
@@ -73,3 +106,5 @@ export interface KdosBridge {
   readonly platform: NodeJS.Platform;
   readonly auth: AuthBridge;
 }
+
+export {};

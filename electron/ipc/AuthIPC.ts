@@ -1,92 +1,236 @@
 ﻿import { ipcMain } from "electron";
-import { container } from "../core/ServiceContainer.js";
-import { AUTH_SERVICE } from "../core/AuthBootstrap.js";
+
+import {
+  container,
+} from "../core/ServiceContainer.js";
+
+import {
+  AUTH_SERVICE,
+} from "../core/AuthBootstrap.js";
 
 function getAuthService() {
-  return container.resolve<any>(AUTH_SERVICE);
+  return container.resolve<any>(
+    AUTH_SERVICE,
+  );
 }
 
 export function registerAuthIPC(): void {
-  ipcMain.removeHandler("auth.register");
-  ipcMain.removeHandler("auth.login");
-  ipcMain.removeHandler("auth.logout");
-  ipcMain.removeHandler("auth.session");
+  const channels = [
+    "auth.register",
+    "auth.login",
+    "auth.logout",
+    "auth.session",
+    "auth.verifyEmail",
+    "auth.resendVerification",
+  ];
 
-  ipcMain.handle("auth.register", async (_event, request) => {
-    try {
-      console.log("[IPC] auth.register", {
-        email: request?.email,
-      });
+  for (const channel of channels) {
+    ipcMain.removeHandler(channel);
+  }
 
-      const result = await getAuthService().register(request);
+  ipcMain.handle(
+    "auth.register",
+    async (_event, request) => {
+      try {
+        console.log(
+          "[IPC] auth.register",
+          {
+            email: request?.email,
+          },
+        );
 
-      console.log("[IPC] auth.register result", result);
+        const result =
+          await getAuthService().register(
+            request,
+          );
 
-      return result;
-    } catch (error) {
-      console.error("[IPC] auth.register failed", error);
+        console.log(
+          "[IPC] auth.register result",
+          result,
+        );
 
-      return {
-        ok: false,
-        reason:
-          error instanceof Error
-            ? error.message
-            : "Account registration failed.",
-      };
-    }
-  });
+        return result;
+      } catch (error) {
+        console.error(
+          "[IPC] auth.register failed",
+          error,
+        );
 
-  ipcMain.handle("auth.login", async (_event, request) => {
-    try {
-      console.log("[IPC] auth.login", {
-        email: request?.email,
-      });
+        return {
+          ok: false,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Account registration failed.",
+        };
+      }
+    },
+  );
 
-      const result = await getAuthService().login(request);
+  ipcMain.handle(
+    "auth.verifyEmail",
+    async (_event, request) => {
+      try {
+        console.log(
+          "[IPC] auth.verifyEmail",
+          {
+            email: request?.email,
+          },
+        );
 
-      console.log("[IPC] auth.login result", result);
+        const result =
+          await getAuthService().verifyEmail(
+            request,
+          );
 
-      return result;
-    } catch (error) {
-      console.error("[IPC] auth.login failed", error);
+        console.log(
+          "[IPC] auth.verifyEmail result",
+          result,
+        );
 
-      return {
-        ok: false,
-        reason:
-          error instanceof Error
-            ? error.message
-            : "Login failed.",
-      };
-    }
-  });
+        return result;
+      } catch (error) {
+        console.error(
+          "[IPC] auth.verifyEmail failed",
+          error,
+        );
 
-  ipcMain.handle("auth.logout", async (_event, sessionId: string) => {
-    try {
-      await getAuthService().logout(sessionId);
+        return {
+          ok: false,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Email verification failed.",
+        };
+      }
+    },
+  );
 
-      return {
-        ok: true,
-      };
-    } catch (error) {
-      console.error("[IPC] auth.logout failed", error);
+  ipcMain.handle(
+    "auth.resendVerification",
+    async (_event, email: string) => {
+      try {
+        console.log(
+          "[IPC] auth.resendVerification",
+          {
+            email,
+          },
+        );
 
-      return {
-        ok: false,
-        reason:
-          error instanceof Error
-            ? error.message
-            : "Logout failed.",
-      };
-    }
-  });
+        const result =
+          await getAuthService().resendVerification(
+            email,
+          );
+
+        console.log(
+          "[IPC] auth.resendVerification result",
+          result,
+        );
+
+        return result;
+      } catch (error) {
+        console.error(
+          "[IPC] auth.resendVerification failed",
+          error,
+        );
+
+        return {
+          ok: false,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Unable to resend verification code.",
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "auth.login",
+    async (_event, request) => {
+      try {
+        console.log(
+          "[IPC] auth.login",
+          {
+            email: request?.email,
+          },
+        );
+
+        const result =
+          await getAuthService().login(
+            request,
+          );
+
+        console.log(
+          "[IPC] auth.login result",
+          result,
+        );
+
+        return result;
+      } catch (error) {
+        console.error(
+          "[IPC] auth.login failed",
+          error,
+        );
+
+        return {
+          ok: false,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Login failed.",
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "auth.logout",
+    async (
+      _event,
+      sessionId: string,
+    ) => {
+      try {
+        await getAuthService().logout(
+          sessionId,
+        );
+
+        return {
+          ok: true,
+        };
+      } catch (error) {
+        console.error(
+          "[IPC] auth.logout failed",
+          error,
+        );
+
+        return {
+          ok: false,
+          reason:
+            error instanceof Error
+              ? error.message
+              : "Logout failed.",
+        };
+      }
+    },
+  );
 
   ipcMain.handle(
     "auth.session",
-    async (_event, sessionId: string) => {
+    async (
+      _event,
+      sessionId: string,
+    ) => {
       try {
-        return await getAuthService().validateSession(sessionId);
+        return await getAuthService()
+          .validateSession(
+            sessionId,
+          );
       } catch (error) {
-        console.error("[IPC] auth.session failed", error);
+        console.error(
+          "[IPC] auth.session failed",
+          error,
+        );
 
         return {
           ok: false,

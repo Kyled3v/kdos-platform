@@ -5,13 +5,12 @@ import { BootstrapStatus } from "@/app/bootstrap/types/BootstrapStatus";
 
 import { LoginPage } from "@/platform/auth/ui/LoginPage";
 import { RegisterPage } from "@/platform/auth/ui/RegisterPage";
-import { VerifyEmailPage } from "@/platform/auth/ui/VerifyEmailPage";
 import { RendererAuthService } from "@/platform/auth/services/AuthService";
 
 import type { AuthSession } from "@/platform/auth/models/AuthSession";
 import type { CompanyId } from "@/platform/auth/models/AuthUser";
 
-type AuthScreen = "login" | "register" | "verify";
+type AuthScreen = "login" | "register";
 
 const DEFAULT_COMPANY_ID = "default-company" as CompanyId;
 
@@ -19,7 +18,6 @@ export function ApplicationBootstrap(): JSX.Element {
   const state = useBootstrap();
 
   const [screen, setScreen] = useState<AuthScreen>("login");
-  const [verificationEmail, setVerificationEmail] = useState("");
 
   const authService = useMemo(() => {
     return new RendererAuthService();
@@ -27,87 +25,18 @@ export function ApplicationBootstrap(): JSX.Element {
 
   const handleLoginSuccess = (session: AuthSession): void => {
     console.log("[KDOS] Login successful:", session);
-  };
-
-  const handleRegisterSuccess = (email: string): void => {
-    console.log("[KDOS] Registration successful:", email);
-
-    setVerificationEmail(email);
-    setScreen("verify");
-  };
-
-  const handleEmailVerified = (): void => {
-    console.log(
-      "[KDOS] Email verification successful:",
-      verificationEmail,
-    );
 
     setScreen("login");
   };
 
-  const handleVerifyEmail = async (
-    email: string,
-    code: string,
-  ): Promise<boolean> => {
-    console.log(
-      "[KDOS] Verifying email:",
-      email,
-    );
+  const handleRegisterSuccess = (session: AuthSession): void => {
+    console.log("[KDOS] Registration successful:", session);
 
-    const result = await authService.verifyEmail({
-      email,
-      code,
-    });
-
-    if (!result.ok) {
-      console.error(
-        "[KDOS] Email verification failed:",
-        result.reason,
-      );
-
-      return false;
-    }
-
-    console.log(
-      "[KDOS] Email verification successful:",
-      email,
-    );
-
-    return true;
-  };
-
-  const handleResendVerification = async (): Promise<void> => {
-    console.log(
-      "[KDOS] Resending verification email:",
-      verificationEmail,
-    );
-
-    const result =
-      await authService.resendVerification(
-        verificationEmail,
-      );
-
-    if (!result.ok) {
-      throw new Error(result.reason);
-    }
+    setScreen("login");
   };
 
   switch (state.status) {
     case BootstrapStatus.UNAUTHENTICATED:
-      if (screen === "verify") {
-        return (
-          <VerifyEmailPage
-            email={verificationEmail}
-            onVerify={handleVerifyEmail}
-            onVerified={handleEmailVerified}
-            onResend={handleResendVerification}
-            onBackToLogin={() => {
-              setScreen("login");
-            }}
-          />
-        );
-      }
-
       if (screen === "register") {
         return (
           <RegisterPage
@@ -177,5 +106,4 @@ export function ApplicationBootstrap(): JSX.Element {
       );
   }
 }
-
 

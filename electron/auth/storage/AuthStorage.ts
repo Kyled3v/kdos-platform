@@ -1,45 +1,60 @@
-/**
+﻿/**
  * AuthStorage
  *
  * Persists users and sessions as JSON files.
- * The IAuthStorage interface is the contract; JsonAuthStorage is the
- * current implementation. Migrating to SQLite later means writing a new
- * class that satisfies IAuthStorage — nothing else changes.
+ *
+ * Verification codes are stored only as hashes.
  */
 
-import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
-import { join } from "path";
-import { AuthUser, UserId } from "../models/AuthUser.js";
-import { AuthSession, SessionId } from "../models/AuthSession.js";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  readdir,
+  unlink,
+} from "fs/promises";
 
-// ---------------------------------------------------------------------------
-// Contract
-// ---------------------------------------------------------------------------
+import { join } from "path";
+
+import {
+  AuthUser,
+  UserId,
+} from "../models/AuthUser.js";
+
+import {
+  AuthSession,
+  SessionId,
+} from "../models/AuthSession.js";
 
 export interface IAuthStorage {
   saveUser(user: AuthUser): Promise<void>;
   loadUser(userId: UserId): Promise<AuthUser | undefined>;
   loadUserByEmail(email: string): Promise<AuthUser | undefined>;
+
   saveSession(session: AuthSession): Promise<void>;
   loadSession(sessionId: SessionId): Promise<AuthSession | undefined>;
   deleteSession(sessionId: SessionId): Promise<void>;
 }
 
-// ---------------------------------------------------------------------------
-// Serialisation shapes
-// ---------------------------------------------------------------------------
-
 interface SerializedUser {
   readonly userId: string;
   readonly email: string;
   readonly passwordHash: string;
+
   readonly firstName: string;
   readonly lastName: string;
+
   readonly role: string;
   readonly companyId: string;
+
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly lastLogin: string | null;
+
+  readonly emailVerified?: boolean;
+
+  readonly verificationCodeHash?: string | null;
+  readonly verificationCodeExpiresAt?: string | null;
 }
 
 interface SerializedSession {
@@ -50,42 +65,80 @@ interface SerializedSession {
   readonly refreshToken: string;
 }
 
-// ---------------------------------------------------------------------------
-// Serialisation helpers
-// ---------------------------------------------------------------------------
-
-function serializeUser(user: AuthUser): SerializedUser {
+function serializeUser(
+  user: AuthUser,
+): SerializedUser {
   return {
     userId: user.userId,
     email: user.email,
     passwordHash: user.passwordHash,
+
     firstName: user.firstName,
     lastName: user.lastName,
+
     role: user.role,
     companyId: user.companyId,
+
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
+
     lastLogin:
-      user.lastLogin !== undefined ? user.lastLogin.toISOString() : null,
+      user.lastLogin !== undefined
+        ? user.lastLogin.toISOString()
+        : null,
+
+    emailVerified: user.emailVerified,
+
+    verificationCodeHash:
+      user.verificationCodeHash ?? null,
+
+    verificationCodeExpiresAt:
+      user.verificationCodeExpiresAt !== undefined
+        ? user.verificationCodeExpiresAt.toISOString()
+        : null,
   };
 }
 
-function deserializeUser(s: SerializedUser): AuthUser {
+function deserializeUser(
+  user: SerializedUser,
+): AuthUser {
   return {
-    userId: s.userId,
-    email: s.email,
-    passwordHash: s.passwordHash,
-    firstName: s.firstName,
-    lastName: s.lastName,
-    role: s.role as AuthUser["role"],
-    companyId: s.companyId,
-    createdAt: new Date(s.createdAt),
-    updatedAt: new Date(s.updatedAt),
-    lastLogin: s.lastLogin !== null ? new Date(s.lastLogin) : undefined,
+    userId: user.userId,
+    email: user.email,
+    passwordHash: user.passwordHash,
+
+    firstName: user.firstName,
+    lastName: user.lastName,
+
+    role: user.role as AuthUser["role"],
+    companyId: user.companyId,
+
+    createdAt: new Date(user.createdAt),
+    updatedAt: new Date(user.updatedAt),
+
+    lastLogin:
+      user.lastLogin !== null &&
+      user.lastLogin !== undefined
+        ? new Date(user.lastLogin)
+        : undefined,
+
+    emailVerified:
+      user.emailVerified ?? false,
+
+    verificationCodeHash:
+      user.verificationCodeHash ?? undefined,
+
+    verificationCodeExpiresAt:
+      user.verificationCodeExpiresAt !== null &&
+      user.verificationCodeExpiresAt !== undefined
+        ? new Date(user.verificationCodeExpiresAt)
+        : undefined,
   };
 }
 
-function serializeSession(session: AuthSession): SerializedSession {
+function serializeSession(
+  session: AuthSession,
+): SerializedSession {
   return {
     sessionId: session.sessionId,
     userId: session.userId,
@@ -95,79 +148,126 @@ function serializeSession(session: AuthSession): SerializedSession {
   };
 }
 
-function deserializeSession(s: SerializedSession): AuthSession {
+function deserializeSession(
+  session: SerializedSession,
+): AuthSession {
   return {
-    sessionId: s.sessionId,
-    userId: s.userId,
-    createdAt: new Date(s.createdAt),
-    expiresAt: new Date(s.expiresAt),
-    refreshToken: s.refreshToken,
+    sessionId: session.sessionId,
+    userId: session.userId,
+    createdAt: new Date(session.createdAt),
+    expiresAt: new Date(session.expiresAt),
+    refreshToken: session.refreshToken,
   };
 }
 
-// ---------------------------------------------------------------------------
-// JSON file helpers (each returns its own concrete type — no union leaks)
-// ---------------------------------------------------------------------------
-
-async function readUserFile(filePath: string): Promise<AuthUser | undefined> {
+async function readUserFile(
+  filePath: string,
+): Promise<AuthUser | undefined> {
   try {
-    const raw = await readFile(filePath, "utf-8");
-    return deserializeUser(JSON.parse(raw) as SerializedUser);
+    const raw = await readFile(
+      filePath,
+      "utf-8",
+    );
+
+    return deserializeUser(
+      JSON.parse(raw) as SerializedUser,
+    );
   } catch {
     return undefined;
   }
 }
 
-async function readSessionFile(filePath: string): Promise<AuthSession | undefined> {
+async function readSessionFile(
+  filePath: string,
+): Promise<AuthSession | undefined> {
   try {
-    const raw = await readFile(filePath, "utf-8");
-    return deserializeSession(JSON.parse(raw) as SerializedSession);
+    const raw = await readFile(
+      filePath,
+      "utf-8",
+    );
+
+    return deserializeSession(
+      JSON.parse(raw) as SerializedSession,
+    );
   } catch {
     return undefined;
   }
 }
 
-// ---------------------------------------------------------------------------
-// JSON implementation
-// ---------------------------------------------------------------------------
-
-export class JsonAuthStorage implements IAuthStorage {
+export class JsonAuthStorage
+  implements IAuthStorage
+{
   private readonly usersDir: string;
   private readonly sessionsDir: string;
 
-  public constructor(storageRootPath: string) {
-    this.usersDir = join(storageRootPath, "users");
-    this.sessionsDir = join(storageRootPath, "sessions");
-  }
+  public constructor(
+    storageRootPath: string,
+  ) {
+    this.usersDir = join(
+      storageRootPath,
+      "users",
+    );
 
-  public async saveUser(user: AuthUser): Promise<void> {
-    await mkdir(this.usersDir, { recursive: true });
-    await writeFile(
-      this.userPath(user.userId),
-      JSON.stringify(serializeUser(user), null, 2),
-      "utf-8"
+    this.sessionsDir = join(
+      storageRootPath,
+      "sessions",
     );
   }
 
-  public async loadUser(userId: UserId): Promise<AuthUser | undefined> {
-    return readUserFile(this.userPath(userId));
+  public async saveUser(
+    user: AuthUser,
+  ): Promise<void> {
+    await mkdir(this.usersDir, {
+      recursive: true,
+    });
+
+    await writeFile(
+      this.userPath(user.userId),
+      JSON.stringify(
+        serializeUser(user),
+        null,
+        2,
+      ),
+      "utf-8",
+    );
   }
 
-  public async loadUserByEmail(email: string): Promise<AuthUser | undefined> {
+  public async loadUser(
+    userId: UserId,
+  ): Promise<AuthUser | undefined> {
+    return readUserFile(
+      this.userPath(userId),
+    );
+  }
+
+  public async loadUserByEmail(
+    email: string,
+  ): Promise<AuthUser | undefined> {
     let fileNames: string[];
 
     try {
-      fileNames = await readdir(this.usersDir);
+      fileNames = await readdir(
+        this.usersDir,
+      );
     } catch {
       return undefined;
     }
 
-    const normalised = email.toLowerCase().trim();
+    const normalised =
+      email.toLowerCase().trim();
 
     for (const fileName of fileNames) {
-      const user = await readUserFile(join(this.usersDir, fileName));
+      const user = await readUserFile(
+        join(
+          this.usersDir,
+          fileName,
+        ),
+      );
 
-      if (user !== undefined && user.email.toLowerCase() === normalised) {
+      if (
+        user !== undefined &&
+        user.email.toLowerCase() === normalised
+      ) {
         return user;
       }
     }
@@ -175,32 +275,61 @@ export class JsonAuthStorage implements IAuthStorage {
     return undefined;
   }
 
-  public async saveSession(session: AuthSession): Promise<void> {
-    await mkdir(this.sessionsDir, { recursive: true });
+  public async saveSession(
+    session: AuthSession,
+  ): Promise<void> {
+    await mkdir(this.sessionsDir, {
+      recursive: true,
+    });
+
     await writeFile(
-      this.sessionPath(session.sessionId),
-      JSON.stringify(serializeSession(session), null, 2),
-      "utf-8"
+      this.sessionPath(
+        session.sessionId,
+      ),
+      JSON.stringify(
+        serializeSession(session),
+        null,
+        2,
+      ),
+      "utf-8",
     );
   }
 
-  public async loadSession(sessionId: SessionId): Promise<AuthSession | undefined> {
-    return readSessionFile(this.sessionPath(sessionId));
+  public async loadSession(
+    sessionId: SessionId,
+  ): Promise<AuthSession | undefined> {
+    return readSessionFile(
+      this.sessionPath(sessionId),
+    );
   }
 
-  public async deleteSession(sessionId: SessionId): Promise<void> {
+  public async deleteSession(
+    sessionId: SessionId,
+  ): Promise<void> {
     try {
-      await unlink(this.sessionPath(sessionId));
+      await unlink(
+        this.sessionPath(sessionId),
+      );
     } catch {
-      // Session file may already be absent — not an error.
+      // Already absent.
     }
   }
 
-  private userPath(userId: UserId): string {
-    return join(this.usersDir, `${userId}.json`);
+  private userPath(
+    userId: UserId,
+  ): string {
+    return join(
+      this.usersDir,
+      `${userId}.json`,
+    );
   }
 
-  private sessionPath(sessionId: SessionId): string {
-    return join(this.sessionsDir, `${sessionId}.json`);
+  private sessionPath(
+    sessionId: SessionId,
+  ): string {
+    return join(
+      this.sessionsDir,
+      `${sessionId}.json`,
+    );
   }
 }

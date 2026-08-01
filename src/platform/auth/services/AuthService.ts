@@ -23,6 +23,11 @@ export interface LoginRequest {
   readonly password: string;
 }
 
+export interface VerifyEmailRequest {
+  readonly email: string;
+  readonly code: string;
+}
+
 export type AuthSuccess<T> = {
   readonly ok: true;
   readonly value: T;
@@ -36,6 +41,11 @@ export type AuthFailure = {
 export type AuthResult<T> =
   | AuthSuccess<T>
   | AuthFailure;
+
+export interface RegistrationResult {
+  readonly user: AuthUser;
+  readonly email: string;
+}
 
 interface AuthUserResponse {
   readonly userId: string;
@@ -81,7 +91,7 @@ function mapUser(user: AuthUserResponse): AuthUser {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
-    companyId: user.companyId,
+    companyId: user.companyId as CompanyId,
     createdAt: new Date(user.createdAt),
     updatedAt: new Date(user.updatedAt),
     lastLogin:
@@ -106,7 +116,7 @@ function mapSession(
 export class AuthService {
   public async register(
     request: RegisterRequest,
-  ): Promise<AuthResult<AuthUser>> {
+  ): Promise<AuthResult<RegistrationResult>> {
     try {
       console.log("[KDOS] Renderer register:", request.email);
 
@@ -119,9 +129,14 @@ export class AuthService {
         return result;
       }
 
+      const user = mapUser(result.value);
+
       return {
         ok: true,
-        value: mapUser(result.value),
+        value: {
+          user,
+          email: user.email,
+        },
       };
     } catch (error) {
       console.error("[KDOS] Renderer register failed:", error);
@@ -132,6 +147,81 @@ export class AuthService {
           error instanceof Error
             ? error.message
             : "Registration failed.",
+      };
+    }
+  }
+
+  public async verifyEmail(
+    request: VerifyEmailRequest,
+  ): Promise<AuthResult<true>> {
+    try {
+      console.log(
+        "[KDOS] Renderer email verification:",
+        request.email,
+      );
+
+      const result =
+        await getKdosBridge().auth.verifyEmail(request);
+
+      console.log(
+        "[KDOS] Renderer email verification result:",
+        result,
+      );
+
+      if (!result.ok) {
+        return result;
+      }
+
+      return {
+        ok: true,
+        value: true,
+      };
+    } catch (error) {
+      console.error(
+        "[KDOS] Renderer email verification failed:",
+        error,
+      );
+
+      return {
+        ok: false,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Email verification failed.",
+      };
+    }
+  }
+
+  public async resendVerification(
+    email: string,
+  ): Promise<AuthResult<boolean>> {
+    try {
+      console.log(
+        "[KDOS] Renderer resend verification:",
+        email,
+      );
+
+      const result =
+        await getKdosBridge().auth.resendVerification(email);
+
+      console.log(
+        "[KDOS] Renderer resend verification result:",
+        result,
+      );
+
+      return result;
+    } catch (error) {
+      console.error(
+        "[KDOS] Renderer resend verification failed:",
+        error,
+      );
+
+      return {
+        ok: false,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "Unable to resend verification code.",
       };
     }
   }
@@ -205,4 +295,3 @@ export class AuthService {
 export {
   AuthService as RendererAuthService,
 };
-

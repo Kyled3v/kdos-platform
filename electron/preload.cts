@@ -12,6 +12,12 @@ const auth = {
 
   validateSession: (sessionId: string) =>
     ipcRenderer.invoke("auth.session", sessionId),
+
+  verifyEmail: (request: unknown) =>
+    ipcRenderer.invoke("auth.verifyEmail", request),
+
+  resendVerification: (email: string) =>
+    ipcRenderer.invoke("auth.resendVerification", email),
 };
 
 const kdos = {
@@ -20,7 +26,4 @@ const kdos = {
   auth,
 };
 
-contextBridge.exposeInMainWorld(
-  "kdos",
-  kdos
-);
+contextBridge.exposeInMainWorld("kdos", kdos);

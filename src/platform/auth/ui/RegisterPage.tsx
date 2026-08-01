@@ -16,12 +16,14 @@ import type {
   RegisterRequest,
 } from "../services/AuthService";
 
-import type { AuthSession } from "../models/AuthSession";
-import type { UserRole, CompanyId } from "../models/AuthUser";
+import type {
+  UserRole,
+  CompanyId,
+} from "../models/AuthUser";
 
 interface RegisterPageProps {
   readonly authService: AuthService;
-  readonly onSuccess: (session: AuthSession) => void;
+  readonly onSuccess: (email: string) => void;
   readonly onLogin: () => void;
   readonly defaultCompanyId: CompanyId;
   readonly defaultRole?: UserRole;
@@ -84,7 +86,9 @@ export function RegisterPage({
   ]);
 
   const handleSubmit = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+    async (
+      event: React.FormEvent<HTMLFormElement>,
+    ): Promise<void> => {
       event.preventDefault();
 
       if (loading) {
@@ -109,42 +113,47 @@ export function RegisterPage({
           companyId: defaultCompanyId,
         };
 
-        console.log("[AUTH] Registering account:", request.email);
+        console.log(
+          "[AUTH] Creating account:",
+          request.email,
+        );
 
         const registerResult =
           await authService.register(request);
 
-        console.log("[AUTH] Register result:", registerResult);
+        console.log(
+          "[AUTH] Register result:",
+          registerResult,
+        );
 
         if (!registerResult.ok) {
           setServerError(registerResult.reason);
           return;
         }
 
-        console.log("[AUTH] Registration successful. Logging in...");
+        const registeredEmail =
+          registerResult.value.email;
 
-        const loginResult = await authService.login({
-          email: email.trim(),
-          password,
-        });
+        console.log(
+          "[AUTH] Account created:",
+          registeredEmail,
+        );
 
-        console.log("[AUTH] Login result:", loginResult);
+        console.log(
+          "[AUTH] Account requires email verification.",
+        );
 
-        if (!loginResult.ok) {
-          setServerError(loginResult.reason);
-          return;
-        }
-
-        console.log("[AUTH] Authentication successful.");
-
-        onSuccess(loginResult.value);
+        onSuccess(registeredEmail);
       } catch (error) {
-        console.error("[AUTH] Registration failed:", error);
+        console.error(
+          "[AUTH] Registration failed:",
+          error,
+        );
 
         setServerError(
           error instanceof Error
             ? error.message
-            : "Unable to create the account. Please try again."
+            : "Unable to create the account. Please try again.",
         );
       } finally {
         setLoading(false);
@@ -161,7 +170,7 @@ export function RegisterPage({
       onSuccess,
       password,
       validate,
-    ]
+    ],
   );
 
   return (
@@ -283,7 +292,9 @@ export function RegisterPage({
             whileTap={{ scale: loading ? 1 : 0.98 }}
             className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-[#1c1c1f] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Creating account..." : "Create account"}
+            {loading
+              ? "Creating account..."
+              : "Create account"}
           </motion.button>
 
           <p className="text-center text-sm text-zinc-500">
