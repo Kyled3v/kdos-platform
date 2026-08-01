@@ -1,104 +1,152 @@
-/**
- * CompanyService
- *
- * Creates companies, persists them, manages settings, and marks
- * onboarding complete. All storage I/O is delegated to ICompanyStorage.
- */
+﻿import type {
+  Company,
+  CompanyId,
+  Department,
+  DepartmentId,
+  Location,
+  LocationId,
+} from "../models/Company";
 
-import { randomUUID } from "crypto";
-import type { Company, CompanyId, CreateCompanyInput } from "../models/Company";
-import type { CompanySettings } from "../models/CompanySettings";
-import { defaultCompanySettings } from "../models/CompanySettings";
-import type { ICompanyStorage } from "../storage/CompanyStorage";
-
-export type CompanySuccess<T> = { readonly ok: true; readonly value: T };
-export type CompanyFailure = { readonly ok: false; readonly reason: string };
-export type CompanyResult<T> = CompanySuccess<T> | CompanyFailure;
-
-function succeed<T>(value: T): CompanySuccess<T> {
-  return { ok: true, value };
+export interface CreateCompanyRequest {
+  readonly name: string;
+  readonly legalName: string;
+  readonly registrationNumber?: string;
+  readonly email: string;
+  readonly phone: string;
+  readonly website?: string;
 }
 
-function fail(reason: string): CompanyFailure {
-  return { ok: false, reason };
+export interface CreateDepartmentRequest {
+  readonly companyId: CompanyId;
+  readonly name: string;
+  readonly description?: string;
 }
 
-export interface OnboardingResult {
-  readonly company: Company;
-  readonly settings: CompanySettings;
+export interface CreateLocationRequest {
+  readonly companyId: CompanyId;
+  readonly name: string;
+  readonly address: string;
+  readonly city: string;
+  readonly province: string;
+  readonly country: string;
 }
 
 export class CompanyService {
-  private readonly storage: ICompanyStorage;
+  private company: Company | null = null;
+  private readonly departments: Department[] = [];
+  private readonly locations: Location[] = [];
 
-  public constructor(storage: ICompanyStorage) {
-    this.storage = storage;
-  }
-
-  public async createCompany(
-    input: CreateCompanyInput
-  ): Promise<CompanyResult<Company>> {
-    if (input.companyName.trim().length === 0) {
-      return fail("Company name is required.");
+  public createCompany(
+    request: CreateCompanyRequest,
+  ): Company {
+    if (this.company !== null) {
+      throw new Error("A company is already configured.");
     }
 
-    if (input.email.trim().length === 0) {
-      return fail("Company email is required.");
-    }
+    const now = new Date().toISOString();
 
     const company: Company = {
-      companyId: randomUUID() as CompanyId,
-      companyName: input.companyName.trim(),
-      registrationNumber: input.registrationNumber.trim(),
-      vatNumber: input.vatNumber.trim(),
-      email: input.email.trim().toLowerCase(),
-      phone: input.phone.trim(),
-      address: input.address,
-      logoPath: input.logoPath,
-      createdAt: new Date(),
+      companyId: crypto.randomUUID(),
+      name: request.name.trim(),
+      legalName: request.legalName.trim(),
+      registrationNumber:
+        request.registrationNumber?.trim() || null,
+      email: request.email.trim(),
+      phone: request.phone.trim(),
+      website: request.website?.trim() || null,
+      createdAt: now,
+      updatedAt: now,
     };
 
-    await this.storage.saveCompany(company);
+    this.company = company;
 
-    return succeed(company);
+    return company;
   }
 
-  public async completeOnboarding(
-    input: CreateCompanyInput
-  ): Promise<CompanyResult<OnboardingResult>> {
-    const companyResult = await this.createCompany(input);
+  public getCompany(): Company | null {
+    return this.company;
+  }
 
-    if (!companyResult.ok) {
-      return fail(companyResult.reason);
+  public updateCompany(
+    updates: Partial<
+      Pick<
+        Company,
+        | "name"
+        | "legalName"
+        | "registrationNumber"
+        | "email"
+        | "phone"
+        | "website"
+      >
+    >,
+  ): Company {
+    if (this.company === null) {
+      throw new Error("Company has not been configured.");
     }
 
-    const settings: CompanySettings = {
-      ...defaultCompanySettings(companyResult.value.companyId),
-      onboardingComplete: true,
-      updatedAt: new Date(),
+    this.company = {
+      ...this.company,
+      ...updates,
+      updatedAt: new Date().toISOString(),
     };
 
-    await this.storage.saveSettings(settings);
-
-    return succeed({ company: companyResult.value, settings });
+    return this.company;
   }
 
-  public async loadCompany(
-    companyId: CompanyId
-  ): Promise<Company | undefined> {
-    return this.storage.loadCompany(companyId);
+  public createDepartment(
+    request: CreateDepartmentRequest,
+  ): Department {
+    const now = new Date().toISOString();
+
+    const department: Department = {
+      departmentId: crypto.randomUUID() as DepartmentId,
+      companyId: request.companyId,
+      name: request.name.trim(),
+      description: request.description?.trim() ?? "",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.departments.push(department);
+
+    return department;
   }
 
-  public async loadSettings(
-    companyId: CompanyId
-  ): Promise<CompanySettings | undefined> {
-    return this.storage.loadSettings(companyId);
+  public listDepartments(
+    companyId: CompanyId,
+  ): Department[] {
+    return this.departments.filter(
+      (department) => department.companyId === companyId,
+    );
   }
 
-  public async isOnboardingComplete(
-    companyId: CompanyId
-  ): Promise<boolean> {
-    const settings = await this.storage.loadSettings(companyId);
-    return settings?.onboardingComplete ?? false;
+  public createLocation(
+    request: CreateLocationRequest,
+  ): Location {
+    const now = new Date().toISOString();
+
+    const location: Location = {
+      locationId: crypto.randomUUID() as LocationId,
+      companyId: request.companyId,
+      name: request.name.trim(),
+      address: request.address.trim(),
+      city: request.city.trim(),
+      province: request.province.trim(),
+      country: request.country.trim(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.locations.push(location);
+
+    return location;
+  }
+
+  public listLocations(
+    companyId: CompanyId,
+  ): Location[] {
+    return this.locations.filter(
+      (location) => location.companyId === companyId,
+    );
   }
 }
