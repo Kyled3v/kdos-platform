@@ -83,7 +83,9 @@ function getKdosBridge() {
   return window.kdos;
 }
 
-function mapUser(user: AuthUserResponse): AuthUser {
+function mapUser(
+  user: AuthUserResponse,
+): AuthUser {
   return {
     userId: user.userId,
     email: user.email,
@@ -91,9 +93,12 @@ function mapUser(user: AuthUserResponse): AuthUser {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
-    companyId: user.companyId as CompanyId,
-    createdAt: new Date(user.createdAt),
-    updatedAt: new Date(user.updatedAt),
+    companyId:
+      user.companyId as CompanyId,
+    createdAt:
+      new Date(user.createdAt),
+    updatedAt:
+      new Date(user.updatedAt),
     lastLogin:
       user.lastLogin === null
         ? undefined
@@ -105,41 +110,51 @@ function mapSession(
   session: AuthSessionResponse,
 ): AuthSession {
   return {
-    sessionId: session.sessionId as SessionId,
-    userId: session.userId,
-    createdAt: new Date(session.createdAt),
-    expiresAt: new Date(session.expiresAt),
-    refreshToken: session.refreshToken,
+    sessionId:
+      session.sessionId as SessionId,
+    userId:
+      session.userId,
+    createdAt:
+      new Date(session.createdAt),
+    expiresAt:
+      new Date(session.expiresAt),
+    refreshToken:
+      session.refreshToken,
   };
 }
 
 export class AuthService {
   public async register(
     request: RegisterRequest,
-  ): Promise<AuthResult<RegistrationResult>> {
+  ): Promise<
+    AuthResult<RegistrationResult>
+  > {
     try {
-      console.log("[KDOS] Renderer register:", request.email);
-
       const result =
-        await getKdosBridge().auth.register(request);
-
-      console.log("[KDOS] Renderer register result:", result);
+        await getKdosBridge()
+          .auth
+          .register(request);
 
       if (!result.ok) {
         return result;
       }
 
-      const user = mapUser(result.value);
+      const user =
+        mapUser(result.value);
 
       return {
         ok: true,
+
         value: {
           user,
           email: user.email,
         },
       };
     } catch (error) {
-      console.error("[KDOS] Renderer register failed:", error);
+      console.error(
+        "[AUTH] Registration failed:",
+        error,
+      );
 
       return {
         ok: false,
@@ -153,32 +168,14 @@ export class AuthService {
 
   public async verifyEmail(
     request: VerifyEmailRequest,
-  ): Promise<AuthResult<true>> {
+  ): Promise<AuthResult<boolean>> {
     try {
-      console.log(
-        "[KDOS] Renderer email verification:",
-        request.email,
-      );
-
-      const result =
-        await getKdosBridge().auth.verifyEmail(request);
-
-      console.log(
-        "[KDOS] Renderer email verification result:",
-        result,
-      );
-
-      if (!result.ok) {
-        return result;
-      }
-
-      return {
-        ok: true,
-        value: true,
-      };
+      return await getKdosBridge()
+        .auth
+        .verifyEmail(request);
     } catch (error) {
       console.error(
-        "[KDOS] Renderer email verification failed:",
+        "[AUTH] Email verification failed:",
         error,
       );
 
@@ -196,23 +193,12 @@ export class AuthService {
     email: string,
   ): Promise<AuthResult<boolean>> {
     try {
-      console.log(
-        "[KDOS] Renderer resend verification:",
-        email,
-      );
-
-      const result =
-        await getKdosBridge().auth.resendVerification(email);
-
-      console.log(
-        "[KDOS] Renderer resend verification result:",
-        result,
-      );
-
-      return result;
+      return await getKdosBridge()
+        .auth
+        .resendVerification(email);
     } catch (error) {
       console.error(
-        "[KDOS] Renderer resend verification failed:",
+        "[AUTH] Resend verification failed:",
         error,
       );
 
@@ -231,7 +217,9 @@ export class AuthService {
   ): Promise<AuthResult<AuthSession>> {
     try {
       const result =
-        await getKdosBridge().auth.login(request);
+        await getKdosBridge()
+          .auth
+          .login(request);
 
       if (!result.ok) {
         return result;
@@ -239,10 +227,14 @@ export class AuthService {
 
       return {
         ok: true,
-        value: mapSession(result.value),
+        value:
+          mapSession(result.value),
       };
     } catch (error) {
-      console.error("[KDOS] Renderer login failed:", error);
+      console.error(
+        "[AUTH] Login failed:",
+        error,
+      );
 
       return {
         ok: false,
@@ -257,7 +249,9 @@ export class AuthService {
   public async logout(
     sessionId: string,
   ): Promise<void> {
-    await getKdosBridge().auth.logout(sessionId);
+    await getKdosBridge()
+      .auth
+      .logout(sessionId);
   }
 
   public async validateSession(
@@ -265,7 +259,9 @@ export class AuthService {
   ): Promise<AuthResult<AuthSession>> {
     try {
       const result =
-        await getKdosBridge().auth.validateSession(sessionId);
+        await getKdosBridge()
+          .auth
+          .validateSession(sessionId);
 
       if (!result.ok) {
         return result;
@@ -273,11 +269,12 @@ export class AuthService {
 
       return {
         ok: true,
-        value: mapSession(result.value),
+        value:
+          mapSession(result.value),
       };
     } catch (error) {
       console.error(
-        "[KDOS] Renderer session validation failed:",
+        "[AUTH] Session validation failed:",
         error,
       );
 

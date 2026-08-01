@@ -2,28 +2,29 @@
  * KDOS Electron AuthService
  *
  * Main-process authentication service.
- *
- * Responsibilities:
- * - Account registration
- * - Password authentication
- * - Email verification
- * - Verification-code lifecycle
- * - Session creation
  */
 
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
-import {
+import type {
   AuthUser,
   UserId,
   UserRole,
   CompanyId,
-  updateLastLogin,
 } from "../models/AuthUser.js";
 
 import {
+  markEmailVerified,
+  setVerificationCode,
+  updateLastLogin,
+} from "../models/AuthUser.js";
+
+import type {
   AuthSession,
   SessionId,
+} from "../models/AuthSession.js";
+
+import {
   isExpired,
 } from "../models/AuthSession.js";
 
@@ -34,13 +35,19 @@ import {
 
 import {
   validatePassword,
-  PasswordPolicyOptions,
   DEFAULT_PASSWORD_POLICY,
+  type PasswordPolicyOptions,
 } from "../security/PasswordPolicy.js";
 
 import type {
   IAuthStorage,
 } from "../storage/AuthStorage.js";
+
+import {
+  createVerificationCode,
+  hashVerificationCode,
+  EmailVerificationService,
+} from "./EmailVerificationService.js";
 
 export interface RegisterRequest {
   readonly email: string;
@@ -61,6 +68,18 @@ export interface VerifyEmailRequest {
   readonly code: string;
 }
 
+export interface AuthUserResponse {
+  readonly userId: string;
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly role: UserRole;
+  readonly companyId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly lastLogin: string | null;
+}
+
 export type AuthSuccess<T> = {
   readonly ok: true;
   readonly value: T;
@@ -74,6 +93,22 @@ export type AuthFailure = {
 export type AuthResult<T> =
   | AuthSuccess<T>
   | AuthFailure;
+
+export interface AuthServiceOptions {
+  readonly sessionTtlMs: number;
+  readonly passwordPolicy: PasswordPolicyOptions;
+}
+
+const DEFAULT_SESSION_TTL_MS =
+  8 * 60 * 60 * 1000;
+
+export const DEFAULT_AUTH_SERVICE_OPTIONS: AuthServiceOptions = {
+  sessionTtlMs:
+    DEFAULT_SESSION_TTL_MS,
+
+  passwordPolicy:
+    DEFAULT_PASSWORD_POLICY,
+};
 
 function succeed<T>(
   value: T,
@@ -93,52 +128,54 @@ function fail(
   };
 }
 
-export interface AuthServiceOptions {
-  readonly sessionTtlMs: number;
-  readonly passwordPolicy: PasswordPolicyOptions;
-  readonly verificationCodeTtlMs: number;
-}
-
-const DEFAULT_SESSION_TTL_MS =
-  8 * 60 * 60 * 1_000;
-
-const DEFAULT_VERIFICATION_CODE_TTL_MS =
-  10 * 60 * 1_000;
-
-export const DEFAULT_AUTH_SERVICE_OPTIONS: AuthServiceOptions = {
-  sessionTtlMs:
-    DEFAULT_SESSION_TTL_MS,
-
-  passwordPolicy:
-    DEFAULT_PASSWORD_POLICY,
-
-  verificationCodeTtlMs:
-    DEFAULT_VERIFICATION_CODE_TTL_MS,
-};
-
-function generateVerificationCode(): string {
-  return Math.floor(
-    100000 +
-      Math.random() * 900000,
-  ).toString();
+function toPublicUser(
+  user: AuthUser,
+): AuthUserResponse {
+  return {
+    userId: user.userId,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    companyId: user.companyId,
+    createdAt:
+      user.createdAt.toISOString(),
+    updatedAt:
+      user.updatedAt.toISOString(),
+    lastLogin:
+      user.lastLogin !== undefined
+        ? user.lastLogin.toISOString()
+        : null,
+  };
 }
 
 export class AuthService {
   private readonly storage: IAuthStorage;
   private readonly options: AuthServiceOptions;
+  private readonly emailService: EmailVerificationService;
 
   public constructor(
     storage: IAuthStorage,
     options: AuthServiceOptions =
       DEFAULT_AUTH_SERVICE_OPTIONS,
+    emailService?: EmailVerificationService,
   ) {
     this.storage = storage;
     this.options = options;
+
+    this.emailService =
+      emailService ??
+      new EmailVerificationService({
+        apiKey:
+          process.env.RESEND_API_KEY ?? "",
+        fromEmail:
+          process.env.RESEND_FROM_EMAIL ?? "",
+      });
   }
 
   public async register(
     request: RegisterRequest,
-  ): Promise<AuthResult<AuthUser>> {
+  ): Promise<AuthResult<AuthUserResponse>> {
     const policyResult =
       validatePassword(
         request.password,
@@ -155,6 +192,24 @@ export class AuthService {
       request.email
         .toLowerCase()
         .trim();
+
+    if (!email) {
+      return fail(
+        "Email address is required.",
+      );
+    }
+
+    if (!request.firstName.trim()) {
+      return fail(
+        "First name is required.",
+      );
+    }
+
+    if (!request.lastName.trim()) {
+      return fail(
+        "Last name is required.",
+      );
+    }
 
     const existing =
       await this.storage.loadUserByEmail(
@@ -174,21 +229,10 @@ export class AuthService {
         request.password,
       );
 
-    const verificationCode =
-      generateVerificationCode();
+    const verification =
+      createVerificationCode();
 
-    const verificationCodeHash =
-      await hashPassword(
-        verificationCode,
-      );
-
-    const verificationCodeExpiresAt =
-      new Date(
-        now.getTime() +
-          this.options.verificationCodeTtlMs,
-      );
-
-    const user: AuthUser = {
+    let user: AuthUser = {
       userId:
         randomUUID() as UserId,
 
@@ -202,7 +246,8 @@ export class AuthService {
       lastName:
         request.lastName.trim(),
 
-      role: request.role,
+      role:
+        request.role,
 
       companyId:
         request.companyId,
@@ -213,42 +258,48 @@ export class AuthService {
 
       emailVerified: false,
 
-      verificationCodeHash,
+      verificationCodeHash:
+        verification.hash,
 
-      verificationCodeExpiresAt,
+      verificationCodeExpiresAt:
+        verification.expiresAt,
     };
 
-    await this.storage.saveUser(user);
-
-    /*
-     * Development transport.
-     *
-     * The real email provider will be connected after
-     * the verification lifecycle is confirmed.
-     */
-    console.log(
-      `[KDOS] Verification code for ${email}: ${verificationCode}`,
+    await this.storage.saveUser(
+      user,
     );
 
-    return succeed(user);
+    try {
+      await this.emailService.sendVerificationEmail(
+        user.email,
+        user.firstName,
+        verification.code,
+      );
+    } catch (error) {
+      console.error(
+        "[KDOS] Verification email failed:",
+        error,
+      );
+
+      return fail(
+        error instanceof Error
+          ? error.message
+          : "Account created but verification email could not be sent.",
+      );
+    }
+
+    return succeed(
+      toPublicUser(user),
+    );
   }
 
   public async verifyEmail(
     request: VerifyEmailRequest,
-  ): Promise<AuthResult<AuthUser>> {
+  ): Promise<AuthResult<boolean>> {
     const email =
       request.email
         .toLowerCase()
         .trim();
-
-    const code =
-      request.code.trim();
-
-    if (!/^\d{6}$/.test(code)) {
-      return fail(
-        "Verification code must contain 6 digits.",
-      );
-    }
 
     const user =
       await this.storage.loadUserByEmail(
@@ -257,20 +308,22 @@ export class AuthService {
 
     if (user === undefined) {
       return fail(
-        "Unable to verify this email address.",
+        "Invalid verification request.",
       );
     }
 
     if (user.emailVerified) {
-      return succeed(user);
+      return succeed(true);
     }
 
     if (
-      user.verificationCodeHash === undefined ||
-      user.verificationCodeExpiresAt === undefined
+      user.verificationCodeHash ===
+      undefined ||
+      user.verificationCodeExpiresAt ===
+      undefined
     ) {
       return fail(
-        "No active verification code exists. Request a new code.",
+        "No active verification code exists.",
       );
     }
 
@@ -279,49 +332,32 @@ export class AuthService {
       user.verificationCodeExpiresAt
     ) {
       return fail(
-        "That verification code has expired. Request a new code.",
+        "Verification code has expired.",
       );
     }
 
-    const valid =
-      await verifyPassword(
-        code,
-        user.verificationCodeHash,
+    const submittedHash =
+      hashVerificationCode(
+        request.code,
       );
 
-    if (!valid) {
+    if (
+      submittedHash !==
+      user.verificationCodeHash
+    ) {
       return fail(
-        "That verification code is invalid.",
+        "Invalid verification code.",
       );
     }
 
-    const now = new Date();
-
-    const verifiedUser: AuthUser = {
-      ...user,
-
-      emailVerified: true,
-
-      verificationCodeHash:
-        undefined,
-
-      verificationCodeExpiresAt:
-        undefined,
-
-      updatedAt: now,
-    };
+    const verified =
+      markEmailVerified(user);
 
     await this.storage.saveUser(
-      verifiedUser,
+      verified,
     );
 
-    console.log(
-      `[KDOS] Email verified: ${email}`,
-    );
-
-    return succeed(
-      verifiedUser,
-    );
+    return succeed(true);
   }
 
   public async resendVerification(
@@ -338,49 +374,47 @@ export class AuthService {
       );
 
     if (user === undefined) {
-      /*
-       * Do not reveal whether an email exists.
-       */
-      return succeed(true);
+      return fail(
+        "Unable to resend verification code.",
+      );
     }
 
     if (user.emailVerified) {
-      return fail(
-        "This email address is already verified.",
-      );
+      return succeed(true);
     }
 
-    const verificationCode =
-      generateVerificationCode();
+    const verification =
+      createVerificationCode();
 
-    const verificationCodeHash =
-      await hashPassword(
-        verificationCode,
+    const updated =
+      setVerificationCode(
+        user,
+        verification.hash,
+        verification.expiresAt,
       );
-
-    const verificationCodeExpiresAt =
-      new Date(
-        Date.now() +
-          this.options.verificationCodeTtlMs,
-      );
-
-    const updatedUser: AuthUser = {
-      ...user,
-
-      verificationCodeHash,
-
-      verificationCodeExpiresAt,
-
-      updatedAt: new Date(),
-    };
 
     await this.storage.saveUser(
-      updatedUser,
+      updated,
     );
 
-    console.log(
-      `[KDOS] New verification code for ${email}: ${verificationCode}`,
-    );
+    try {
+      await this.emailService.sendVerificationEmail(
+        updated.email,
+        updated.firstName,
+        verification.code,
+      );
+    } catch (error) {
+      console.error(
+        "[KDOS] Resend verification failed:",
+        error,
+      );
+
+      return fail(
+        error instanceof Error
+          ? error.message
+          : "Unable to resend verification code.",
+      );
+    }
 
     return succeed(true);
   }
@@ -441,7 +475,8 @@ export class AuthService {
       userId:
         user.userId,
 
-      createdAt: now,
+      createdAt:
+        now,
 
       expiresAt:
         new Date(

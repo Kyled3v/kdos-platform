@@ -1,29 +1,61 @@
-﻿import { contextBridge, ipcRenderer } from "electron";
+﻿import {
+  contextBridge,
+  ipcRenderer,
+} from "electron";
 
 const auth = {
   register: (request: unknown) =>
-    ipcRenderer.invoke("auth.register", request),
+    ipcRenderer.invoke(
+      "auth.register",
+      request,
+    ),
 
   login: (request: unknown) =>
-    ipcRenderer.invoke("auth.login", request),
-
-  logout: (sessionId: string) =>
-    ipcRenderer.invoke("auth.logout", sessionId),
-
-  validateSession: (sessionId: string) =>
-    ipcRenderer.invoke("auth.session", sessionId),
+    ipcRenderer.invoke(
+      "auth.login",
+      request,
+    ),
 
   verifyEmail: (request: unknown) =>
-    ipcRenderer.invoke("auth.verifyEmail", request),
+    ipcRenderer.invoke(
+      "auth.verifyEmail",
+      request,
+    ),
 
-  resendVerification: (email: string) =>
-    ipcRenderer.invoke("auth.resendVerification", email),
+  resendVerification: (
+    email: string,
+  ) =>
+    ipcRenderer.invoke(
+      "auth.resendVerification",
+      email,
+    ),
+
+  logout: (sessionId: string) =>
+    ipcRenderer.invoke(
+      "auth.logout",
+      sessionId,
+    ),
+
+  validateSession: (
+    sessionId: string,
+  ) =>
+    ipcRenderer.invoke(
+      "auth.session",
+      sessionId,
+    ),
 };
 
 const kdos = {
-  version: process.versions.electron,
-  platform: process.platform,
+  version:
+    process.versions.electron,
+
+  platform:
+    process.platform,
+
   auth,
 };
 
-contextBridge.exposeInMainWorld("kdos", kdos);
+contextBridge.exposeInMainWorld(
+  "kdos",
+  kdos,
+);

@@ -1,15 +1,14 @@
-﻿/**
- * Renderer-side AuthUser model.
+/**
+ * AuthUser
+ *
+ * Core identity record for a KDOS user.
+ * Password is stored only as a hash — never in plaintext.
  */
 
 export type UserId = string;
 export type CompanyId = string;
 
-export type UserRole =
-  | "Admin"
-  | "Manager"
-  | "Operator"
-  | "Viewer";
+export type UserRole = "Admin" | "Manager" | "Operator" | "Viewer";
 
 export interface AuthUser {
   readonly userId: UserId;
@@ -24,13 +23,6 @@ export interface AuthUser {
   readonly lastLogin: Date | undefined;
 }
 
-export function updateLastLogin(
-  user: AuthUser,
-  loginAt: Date,
-): AuthUser {
-  return {
-    ...user,
-    lastLogin: loginAt,
-    updatedAt: loginAt,
-  };
+export function updateLastLogin(user: AuthUser, loginAt: Date): AuthUser {
+  return { ...user, lastLogin: loginAt, updatedAt: loginAt };
 }

@@ -1,5 +1,8 @@
-﻿/**
- * KDOS renderer window contract.
+/**
+ * Renderer window bridge types.
+ *
+ * The preload script guarantees window.kdos exists before
+ * the renderer application is used.
  */
 
 import type { KdosBridge } from "./AuthBridge";

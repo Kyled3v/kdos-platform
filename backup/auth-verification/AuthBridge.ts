@@ -1,14 +1,8 @@
 ﻿/**
  * KDOS Authentication Bridge
  *
- * Typed contract between React renderer and Electron preload.
+ * Typed contract between the React renderer and Electron preload.
  */
-
-export type UserRole =
-  | "Admin"
-  | "Manager"
-  | "Operator"
-  | "Viewer";
 
 export interface LoginRequest {
   readonly email: string;
@@ -20,7 +14,7 @@ export interface RegisterRequest {
   readonly password: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly role: UserRole;
+  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
   readonly companyId: string;
 }
 
@@ -42,7 +36,7 @@ export interface AuthUserResponse {
   readonly email: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly role: UserRole;
+  readonly role: "Admin" | "Manager" | "Operator" | "Viewer";
   readonly companyId: string;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -59,9 +53,7 @@ export type AuthFailure = {
   readonly reason: string;
 };
 
-export type AuthResult<T> =
-  | AuthSuccess<T>
-  | AuthFailure;
+export type AuthResult<T> = AuthSuccess<T> | AuthFailure;
 
 export interface AuthBridge {
   readonly login: (
@@ -74,7 +66,7 @@ export interface AuthBridge {
 
   readonly verifyEmail: (
     request: VerifyEmailRequest
-  ) => Promise<AuthResult<boolean>>;
+  ) => Promise<AuthResult<AuthUserResponse>>;
 
   readonly resendVerification: (
     email: string
@@ -94,3 +86,5 @@ export interface KdosBridge {
   readonly platform: NodeJS.Platform;
   readonly auth: AuthBridge;
 }
+
+export {};

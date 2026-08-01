@@ -1,8 +1,5 @@
 ﻿/**
- * KDOS Authentication Storage
- *
- * JSON-backed persistence.
- * Can later be replaced by SQLite without changing AuthService.
+ * KDOS authentication storage.
  */
 
 import {
@@ -15,15 +12,21 @@ import {
 
 import { join } from "path";
 
-import type {
+import {
   AuthUser,
   UserId,
 } from "../models/AuthUser.js";
 
-import type {
+import {
   AuthSession,
   SessionId,
 } from "../models/AuthSession.js";
+
+export interface EmailVerification {
+  readonly email: string;
+  readonly codeHash: string;
+  readonly expiresAt: Date;
+}
 
 export interface IAuthStorage {
   saveUser(user: AuthUser): Promise<void>;
@@ -33,6 +36,18 @@ export interface IAuthStorage {
   saveSession(session: AuthSession): Promise<void>;
   loadSession(sessionId: SessionId): Promise<AuthSession | undefined>;
   deleteSession(sessionId: SessionId): Promise<void>;
+
+  saveEmailVerification(
+    verification: EmailVerification,
+  ): Promise<void>;
+
+  loadEmailVerification(
+    email: string,
+  ): Promise<EmailVerification | undefined>;
+
+  deleteEmailVerification(
+    email: string,
+  ): Promise<void>;
 }
 
 interface SerializedUser {
@@ -46,10 +61,6 @@ interface SerializedUser {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly lastLogin: string | null;
-
-  readonly emailVerified: boolean;
-  readonly verificationCodeHash: string | null;
-  readonly verificationCodeExpiresAt: string | null;
 }
 
 interface SerializedSession {
@@ -60,9 +71,13 @@ interface SerializedSession {
   readonly refreshToken: string;
 }
 
-function serializeUser(
-  user: AuthUser,
-): SerializedUser {
+interface SerializedEmailVerification {
+  readonly email: string;
+  readonly codeHash: string;
+  readonly expiresAt: string;
+}
+
+function serializeUser(user: AuthUser): SerializedUser {
   return {
     userId: user.userId,
     email: user.email,
@@ -77,12 +92,6 @@ function serializeUser(
       user.lastLogin !== undefined
         ? user.lastLogin.toISOString()
         : null,
-
-    emailVerified: user.emailVerified,
-    verificationCodeHash:
-      user.verificationCodeHash ?? null,
-    verificationCodeExpiresAt:
-      user.verificationCodeExpiresAt?.toISOString() ?? null,
   };
 }
 
@@ -97,25 +106,11 @@ function deserializeUser(
     lastName: value.lastName,
     role: value.role as AuthUser["role"],
     companyId: value.companyId,
-
     createdAt: new Date(value.createdAt),
     updatedAt: new Date(value.updatedAt),
-
     lastLogin:
       value.lastLogin !== null
         ? new Date(value.lastLogin)
-        : undefined,
-
-    emailVerified:
-      value.emailVerified ?? false,
-
-    verificationCodeHash:
-      value.verificationCodeHash ?? undefined,
-
-    verificationCodeExpiresAt:
-      value.verificationCodeExpiresAt !== null &&
-      value.verificationCodeExpiresAt !== undefined
-        ? new Date(value.verificationCodeExpiresAt)
         : undefined,
   };
 }
@@ -144,35 +139,32 @@ function deserializeSession(
   };
 }
 
-async function readUserFile(
-  filePath: string,
-): Promise<AuthUser | undefined> {
-  try {
-    const raw = await readFile(
-      filePath,
-      "utf-8",
-    );
-
-    return deserializeUser(
-      JSON.parse(raw) as SerializedUser,
-    );
-  } catch {
-    return undefined;
-  }
+function serializeVerification(
+  verification: EmailVerification,
+): SerializedEmailVerification {
+  return {
+    email: verification.email,
+    codeHash: verification.codeHash,
+    expiresAt: verification.expiresAt.toISOString(),
+  };
 }
 
-async function readSessionFile(
-  filePath: string,
-): Promise<AuthSession | undefined> {
-  try {
-    const raw = await readFile(
-      filePath,
-      "utf-8",
-    );
+function deserializeVerification(
+  value: SerializedEmailVerification,
+): EmailVerification {
+  return {
+    email: value.email,
+    codeHash: value.codeHash,
+    expiresAt: new Date(value.expiresAt),
+  };
+}
 
-    return deserializeSession(
-      JSON.parse(raw) as SerializedSession,
-    );
+async function readJson<T>(
+  filePath: string,
+): Promise<T | undefined> {
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    return JSON.parse(raw) as T;
   } catch {
     return undefined;
   }
@@ -183,28 +175,23 @@ export class JsonAuthStorage
 {
   private readonly usersDir: string;
   private readonly sessionsDir: string;
+  private readonly verificationDir: string;
 
-  public constructor(
-    storageRootPath: string,
-  ) {
-    this.usersDir = join(
+  public constructor(storageRootPath: string) {
+    this.usersDir = join(storageRootPath, "users");
+    this.sessionsDir = join(storageRootPath, "sessions");
+    this.verificationDir = join(
       storageRootPath,
-      "users",
-    );
-
-    this.sessionsDir = join(
-      storageRootPath,
-      "sessions",
+      "verification",
     );
   }
 
   public async saveUser(
     user: AuthUser,
   ): Promise<void> {
-    await mkdir(
-      this.usersDir,
-      { recursive: true },
-    );
+    await mkdir(this.usersDir, {
+      recursive: true,
+    });
 
     await writeFile(
       this.userPath(user.userId),
@@ -220,9 +207,14 @@ export class JsonAuthStorage
   public async loadUser(
     userId: UserId,
   ): Promise<AuthUser | undefined> {
-    return readUserFile(
-      this.userPath(userId),
-    );
+    const value =
+      await readJson<SerializedUser>(
+        this.userPath(userId),
+      );
+
+    return value === undefined
+      ? undefined
+      : deserializeUser(value);
   }
 
   public async loadUserByEmail(
@@ -238,20 +230,18 @@ export class JsonAuthStorage
       return undefined;
     }
 
-    const normalised =
+    const normalized =
       email.toLowerCase().trim();
 
     for (const fileName of fileNames) {
-      const user = await readUserFile(
-        join(
-          this.usersDir,
-          fileName,
-        ),
-      );
+      const user =
+        await this.loadUser(
+          fileName.replace(".json", ""),
+        );
 
       if (
         user !== undefined &&
-        user.email.toLowerCase() === normalised
+        user.email.toLowerCase() === normalized
       ) {
         return user;
       }
@@ -263,15 +253,12 @@ export class JsonAuthStorage
   public async saveSession(
     session: AuthSession,
   ): Promise<void> {
-    await mkdir(
-      this.sessionsDir,
-      { recursive: true },
-    );
+    await mkdir(this.sessionsDir, {
+      recursive: true,
+    });
 
     await writeFile(
-      this.sessionPath(
-        session.sessionId,
-      ),
+      this.sessionPath(session.sessionId),
       JSON.stringify(
         serializeSession(session),
         null,
@@ -284,9 +271,14 @@ export class JsonAuthStorage
   public async loadSession(
     sessionId: SessionId,
   ): Promise<AuthSession | undefined> {
-    return readSessionFile(
-      this.sessionPath(sessionId),
-    );
+    const value =
+      await readJson<SerializedSession>(
+        this.sessionPath(sessionId),
+      );
+
+    return value === undefined
+      ? undefined
+      : deserializeSession(value);
   }
 
   public async deleteSession(
@@ -297,12 +289,59 @@ export class JsonAuthStorage
         this.sessionPath(sessionId),
       );
     } catch {
-      // Already deleted.
+      // Already absent.
+    }
+  }
+
+  public async saveEmailVerification(
+    verification: EmailVerification,
+  ): Promise<void> {
+    await mkdir(this.verificationDir, {
+      recursive: true,
+    });
+
+    await writeFile(
+      this.verificationPath(
+        verification.email,
+      ),
+      JSON.stringify(
+        serializeVerification(
+          verification,
+        ),
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+  }
+
+  public async loadEmailVerification(
+    email: string,
+  ): Promise<EmailVerification | undefined> {
+    const value =
+      await readJson<SerializedEmailVerification>(
+        this.verificationPath(email),
+      );
+
+    return value === undefined
+      ? undefined
+      : deserializeVerification(value);
+  }
+
+  public async deleteEmailVerification(
+    email: string,
+  ): Promise<void> {
+    try {
+      await unlink(
+        this.verificationPath(email),
+      );
+    } catch {
+      // Already absent.
     }
   }
 
   private userPath(
-    userId: UserId,
+    userId: string,
   ): string {
     return join(
       this.usersDir,
@@ -311,11 +350,24 @@ export class JsonAuthStorage
   }
 
   private sessionPath(
-    sessionId: SessionId,
+    sessionId: string,
   ): string {
     return join(
       this.sessionsDir,
       `${sessionId}.json`,
+    );
+  }
+
+  private verificationPath(
+    email: string,
+  ): string {
+    const safeEmail = Buffer.from(
+      email.toLowerCase().trim(),
+    ).toString("base64url");
+
+    return join(
+      this.verificationDir,
+      `${safeEmail}.json`,
     );
   }
 }
