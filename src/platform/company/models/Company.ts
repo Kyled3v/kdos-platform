@@ -1,36 +1,43 @@
-﻿export type CompanyId = string;
-export type DepartmentId = string;
-export type LocationId = string;
+﻿/**
+ * KDOS Company Domain Model
+ *
+ * Canonical company identity used by the company onboarding,
+ * storage and operational modules.
+ */
+
+export type CompanyId = string;
+
+export interface Address {
+  readonly street: string;
+  readonly city: string;
+  readonly province: string;
+  readonly postalCode: string;
+  readonly country: string;
+}
 
 export interface Company {
   readonly companyId: CompanyId;
-  readonly name: string;
+  readonly companyName: string;
   readonly legalName: string;
   readonly registrationNumber: string | null;
+  readonly vatNumber: string | null;
   readonly email: string;
   readonly phone: string;
   readonly website: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string;
+  readonly address: Address;
+  readonly logoPath: string | null;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
 }
 
-export interface Department {
-  readonly departmentId: DepartmentId;
-  readonly companyId: CompanyId;
-  readonly name: string;
-  readonly description: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-export interface Location {
-  readonly locationId: LocationId;
-  readonly companyId: CompanyId;
-  readonly name: string;
-  readonly address: string;
-  readonly city: string;
-  readonly province: string;
-  readonly country: string;
-  readonly createdAt: string;
-  readonly updatedAt: string;
+export interface CreateCompanyInput {
+  readonly companyName: string;
+  readonly legalName: string;
+  readonly registrationNumber?: string;
+  readonly vatNumber?: string;
+  readonly email: string;
+  readonly phone: string;
+  readonly website?: string;
+  readonly address: Address;
+  readonly logoPath?: string | null;
 }
